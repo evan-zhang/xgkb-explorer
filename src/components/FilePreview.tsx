@@ -1,11 +1,13 @@
 /**
  * 文件内容预览组件
- * 支持 Markdown 渲染（含内嵌 HTML）、代码高亮、HTML 预览、图片预览
+ * 支持 Markdown 渲染（含内嵌 HTML / GFM / Mermaid 图表）、代码高亮、HTML 预览、图片预览
  */
 
-import { useMemo, useState, useRef } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
+import remarkGfm from 'remark-gfm';
+import mermaid from 'mermaid';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { FileText, AlertCircle, Image as ImageIcon, Eye, Code2 } from 'lucide-react';
@@ -39,6 +41,96 @@ const LANG_MAP: Record<string, string> = {
   dart: 'dart', lua: 'lua', r: 'r', scala: 'scala',
 };
 
+// ── Mermaid 图表渲染 ──────────────────────────────────────────────────────────
+
+let mermaidReady = false;
+
+function MermaidChart({ code }: { code: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!ref.current) return;
+    if (!mermaidReady) {
+      mermaid.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'loose' });
+      mermaidReady = true;
+    }
+    const id = 'mermaid-' + Math.random().toString(36).slice(2, 9);
+    mermaid.render(id, code)
+      .then(({ svg }) => { if (ref.current) ref.current.innerHTML = svg; })
+      .catch(() => { if (ref.current) ref.current.textContent = code; });
+  }, [code]);
+
+  return <div ref={ref} className="my-4 flex justify-center overflow-x-auto" />;
+}
+
+// ── 共用 Markdown 组件配置 ────────────────────────────────────────────────────
+
+const mdComponents = {
+  code(props: { className?: string; children?: React.ReactNode }) {
+    const { className, children } = props;
+    const match = /language-(\w+)/.exec(className || '');
+    const language = match ? match[1] : '';
+    if (language === 'mermaid') {
+      return <MermaidChart code={String(children).replace(/\n$/, '')} />;
+    }
+    return language ? (
+      <SyntaxHighlighter
+        style={oneLight as any}
+        language={LANG_MAP[language] || language}
+        PreTag="div"
+        className="rounded-md text-sm"
+        customStyle={{ margin: 0, borderRadius: '8px', fontSize: '13px' }}
+      >
+        {String(children).replace(/\n$/, '')}
+      </SyntaxHighlighter>
+    ) : (
+      <code className="bg-gray-100 px-1 py-0.5 rounded text-sm font-mono text-pink-600">
+        {children}
+      </code>
+    );
+  },
+  table({ children }: { children?: React.ReactNode }) {
+    return (
+      <div className="overflow-x-auto my-4">
+        <table className="min-w-full border-collapse border border-gray-300 text-sm">{children}</table>
+      </div>
+    );
+  },
+  th({ children }: { children?: React.ReactNode }) {
+    return <th className="border border-gray-300 px-3 py-1.5 bg-gray-100 font-semibold text-left">{children}</th>;
+  },
+  td({ children }: { children?: React.ReactNode }) {
+    return <td className="border border-gray-300 px-3 py-1.5">{children}</td>;
+  },
+  img({ src, alt }: { src?: string; alt?: string }) {
+    return <img src={src} alt={alt || ''} className="max-w-full rounded-md my-2" />;
+  },
+  a({ href, children }: { href?: string; children?: React.ReactNode }) {
+    return <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline">{children}</a>;
+  },
+  blockquote({ children }: { children?: React.ReactNode }) {
+    return <blockquote className="border-l-4 border-gray-300 pl-4 italic text-gray-600 my-2">{children}</blockquote>;
+  },
+};
+
+const PROSE_CLASS = 'prose prose-sm max-w-none prose-headings:font-semibold prose-headings:border-b prose-headings:pb-2 prose-headings:border-gray-200 prose-a:text-blue-600 prose-code:bg-gray-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-pink-600 prose-pre:bg-gray-900 prose-pre:text-gray-100 px-8 py-6';
+
+function MarkdownView({ content }: { content: string }) {
+  return (
+    <div className={PROSE_CLASS}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeRaw]}
+        components={mdComponents as any}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
+  );
+}
+
+// ── 主组件 ────────────────────────────────────────────────────────────────────
+
 export function FilePreview({ content, fileName, filePath, isLoading, error, client, fileId }: FilePreviewProps) {
   const [imgUrl, setImgUrl] = useState<string | null>(null);
   const [imgLoading, setImgLoading] = useState(false);
@@ -56,7 +148,6 @@ export function FilePreview({ content, fileName, filePath, isLoading, error, cli
     return 'text';
   }, [fileName]);
 
-  // 获取图片 URL（放在 useEffect 里更正确，但 useMemo 也能 work）
   useMemo(() => {
     if (fileType !== 'image' || !client || !fileId) {
       setImgUrl(null);
@@ -64,22 +155,12 @@ export function FilePreview({ content, fileName, filePath, isLoading, error, cli
     }
     setImgLoading(true);
     client.getDownloadInfo(fileId).then(result => {
-      if (result.ok && result.value.downloadUrl) {
-        setImgUrl(result.value.downloadUrl);
-      } else {
-        setImgUrl(null);
-      }
+      setImgUrl(result.ok && result.value.downloadUrl ? result.value.downloadUrl : null);
       setImgLoading(false);
-    }).catch(() => {
-      setImgUrl(null);
-      setImgLoading(false);
-    });
+    }).catch(() => { setImgUrl(null); setImgLoading(false); });
   }, [fileType, fileId, client]);
 
-  // 重置 HTML 视图模式
-  useMemo(() => {
-    setHtmlView('preview');
-  }, [fileName]);
+  useMemo(() => { setHtmlView('preview'); }, [fileName]);
 
   // 加载状态
   if (isLoading) {
@@ -118,7 +199,6 @@ export function FilePreview({ content, fileName, filePath, isLoading, error, cli
     );
   }
 
-  // 渲染内容
   const renderContent = () => {
     // ===== 图片预览 =====
     if (fileType === 'image') {
@@ -147,8 +227,8 @@ export function FilePreview({ content, fileName, filePath, isLoading, error, cli
 
     // ===== HTML 文件预览 =====
     if (fileType === 'html') {
-      // getFullFileContent returns AI-extracted Markdown text, not raw HTML bytes.
-      // Only use the iframe path if the content is genuine HTML markup.
+      // getFullFileContent 返回 AI 提取的 Markdown 文本，并非原始 HTML 字节。
+      // 只有内容确实是 HTML 标记时才走 iframe，否则当 Markdown 渲染。
       const trimmed = content?.trimStart() ?? '';
       const isActualHtml =
         trimmed.startsWith('<!DOCTYPE') ||
@@ -157,65 +237,11 @@ export function FilePreview({ content, fileName, filePath, isLoading, error, cli
         /^<[a-z][^>]*>/i.test(trimmed);
 
       if (!isActualHtml) {
-        // AI-extracted content — render as Markdown (same path as .md files)
-        return (
-          <div className="prose prose-sm max-w-none prose-headings:font-semibold prose-headings:border-b prose-headings:pb-2 prose-headings:border-gray-200 prose-a:text-blue-600 prose-code:bg-gray-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-pink-600 prose-pre:bg-gray-900 prose-pre:text-gray-100 px-8 py-6">
-            <ReactMarkdown
-              rehypePlugins={[rehypeRaw]}
-              components={{
-                code(props) {
-                  const { className, children } = props;
-                  const match = /language-(\w+)/.exec(className || '');
-                  const language = match ? match[1] : '';
-                  return language ? (
-                    <SyntaxHighlighter
-                      style={oneLight as any}
-                      language={LANG_MAP[language] || language}
-                      PreTag="div"
-                      className="rounded-md text-sm"
-                      customStyle={{ margin: 0, borderRadius: '8px', fontSize: '13px' }}
-                    >
-                      {String(children).replace(/\n$/, '')}
-                    </SyntaxHighlighter>
-                  ) : (
-                    <code className="bg-gray-100 px-1 py-0.5 rounded text-sm font-mono text-pink-600">
-                      {children}
-                    </code>
-                  );
-                },
-                table({ children }) {
-                  return (
-                    <div className="overflow-x-auto my-4">
-                      <table className="min-w-full border-collapse border border-gray-300 text-sm">{children}</table>
-                    </div>
-                  );
-                },
-                th({ children }) {
-                  return <th className="border border-gray-300 px-3 py-1.5 bg-gray-100 font-semibold text-left">{children}</th>;
-                },
-                td({ children }) {
-                  return <td className="border border-gray-300 px-3 py-1.5">{children}</td>;
-                },
-                img({ src, alt }) {
-                  return <img src={src as string} alt={alt || ''} className="max-w-full rounded-md my-2" />;
-                },
-                a({ href, children }) {
-                  return <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline">{children}</a>;
-                },
-                blockquote({ children }) {
-                  return <blockquote className="border-l-4 border-gray-300 pl-4 italic text-gray-600 my-2">{children}</blockquote>;
-                },
-              }}
-            >
-              {content || ''}
-            </ReactMarkdown>
-          </div>
-        );
+        return <MarkdownView content={content || ''} />;
       }
 
       return (
         <div className="h-full flex flex-col">
-          {/* 切换栏 */}
           <div className="flex items-center gap-1 px-3 py-1.5 border-b border-gray-200 bg-gray-50">
             <button
               onClick={() => setHtmlView('preview')}
@@ -242,7 +268,7 @@ export function FilePreview({ content, fileName, filePath, isLoading, error, cli
               ref={iframeRef}
               srcDoc={content || ''}
               title="HTML 预览"
-              sandbox="allow-same-origin"
+              sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
               className="flex-1 w-full bg-white border-0"
             />
           ) : (
@@ -264,66 +290,7 @@ export function FilePreview({ content, fileName, filePath, isLoading, error, cli
 
     // ===== Markdown 渲染 =====
     if (fileType === 'markdown') {
-      return (
-        <div className="prose prose-sm max-w-none prose-headings:font-semibold prose-headings:border-b prose-headings:pb-2 prose-headings:border-gray-200 prose-a:text-blue-600 prose-code:bg-gray-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-pink-600 prose-pre:bg-gray-900 prose-pre:text-gray-100 px-8 py-6">
-          <ReactMarkdown
-            rehypePlugins={[rehypeRaw]}
-            components={{
-              // 代码块
-              code(props) {
-                const { className, children } = props;
-                const match = /language-(\w+)/.exec(className || '');
-                const language = match ? match[1] : '';
-                return language ? (
-                  <SyntaxHighlighter
-                    style={oneLight as any}
-                    language={LANG_MAP[language] || language}
-                    PreTag="div"
-                    className="rounded-md text-sm"
-                    customStyle={{ margin: 0, borderRadius: '8px', fontSize: '13px' }}
-                  >
-                    {String(children).replace(/\n$/, '')}
-                  </SyntaxHighlighter>
-                ) : (
-                  <code className="bg-gray-100 px-1 py-0.5 rounded text-sm font-mono text-pink-600">
-                    {children}
-                  </code>
-                );
-              },
-              // 表格
-              table({ children }) {
-                return (
-                  <div className="overflow-x-auto my-4">
-                    <table className="min-w-full border-collapse border border-gray-300 text-sm">
-                      {children}
-                    </table>
-                  </div>
-                );
-              },
-              th({ children }) {
-                return <th className="border border-gray-300 px-3 py-1.5 bg-gray-100 font-semibold text-left">{children}</th>;
-              },
-              td({ children }) {
-                return <td className="border border-gray-300 px-3 py-1.5">{children}</td>;
-              },
-              // 图片
-              img({ src, alt }) {
-                return <img src={src as string} alt={alt || ''} className="max-w-full rounded-md my-2" />;
-              },
-              // 链接
-              a({ href, children }) {
-                return <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline">{children}</a>;
-              },
-              // 引用
-              blockquote({ children }) {
-                return <blockquote className="border-l-4 border-gray-300 pl-4 italic text-gray-600 my-2">{children}</blockquote>;
-              },
-            }}
-          >
-            {content || ''}
-          </ReactMarkdown>
-        </div>
-      );
+      return <MarkdownView content={content || ''} />;
     }
 
     // ===== 代码文件渲染 =====
@@ -357,7 +324,6 @@ export function FilePreview({ content, fileName, filePath, isLoading, error, cli
 
   return (
     <div className="h-full flex flex-col bg-white">
-      {/* 面包屑导航 */}
       {filePath && (
         <div className="px-4 py-2 border-b border-gray-200 bg-gray-50 flex items-center gap-2">
           <FileText className="w-3.5 h-3.5 text-gray-400" />
@@ -369,8 +335,6 @@ export function FilePreview({ content, fileName, filePath, isLoading, error, cli
           )}
         </div>
       )}
-
-      {/* 内容区域 */}
       <div className="flex-1 overflow-y-auto">{renderContent()}</div>
     </div>
   );
