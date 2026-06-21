@@ -74,9 +74,10 @@ export function FileTree({ client, projectId, onFileSelect, onFolderSelect, root
   // 获取文件图标
   const getFileIcon = (file: FileListItem) => {
     if (file.type === 1) {
-      // 文件夹
       const isOpen = expandedFolders.has(String(file.id));
-      return isOpen ? <FolderOpen className="w-4 h-4" /> : <Folder className="w-4 h-4" />;
+      return isOpen
+        ? <FolderOpen className="w-4 h-4" style={{ color: '#B45309' }} />
+        : <Folder className="w-4 h-4" style={{ color: '#B45309' }} />;
     }
 
     // 文件：根据扩展名显示
@@ -104,13 +105,20 @@ export function FileTree({ client, projectId, onFileSelect, onFolderSelect, root
     return (
       <div key={fileId}>
         <div
-          className="flex items-center gap-1 px-2 py-1 cursor-pointer hover:bg-gray-100 rounded"
-          style={{ paddingLeft: `${level * 16 + 8}px` }}
+          className="flex items-center gap-1.5 cursor-pointer rounded-md transition-colors hover:bg-[#EDEBE4]"
+          style={{
+            paddingLeft: `${level * 16 + 12}px`,
+            paddingRight: 12,
+            paddingTop: 7,
+            paddingBottom: 7,
+            fontSize: 14,
+            color: '#4B5563',
+          }}
           onClick={() => handleNodeClick(file, currentPath)}
         >
           {/* 展开/折叠图标 */}
           {hasChildren ? (
-            <span className="flex-shrink-0">
+            <span className="flex-shrink-0" style={{ color: '#9CA3AF' }}>
               {isExpanded ? (
                 <ChevronDown className="w-3 h-3" />
               ) : (
@@ -125,7 +133,7 @@ export function FileTree({ client, projectId, onFileSelect, onFolderSelect, root
           <span className="flex-shrink-0">{getFileIcon(file)}</span>
 
           {/* 文件名 */}
-          <span className="text-sm truncate flex-1">{file.name}</span>
+          <span className="truncate flex-1">{file.name}</span>
         </div>
 
         {/* 递归渲染子节点 */}
@@ -142,8 +150,8 @@ export function FileTree({ client, projectId, onFileSelect, onFolderSelect, root
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-full text-red-500">
-        <p className="text-sm text-center px-4">{error}</p>
+      <div className="flex items-center justify-center h-full px-4">
+        <p className="text-sm text-center" style={{ color: '#DC2626' }}>{error}</p>
       </div>
     );
   }
@@ -157,10 +165,10 @@ export function FileTree({ client, projectId, onFileSelect, onFolderSelect, root
 
   if (effectiveLoading) {
     return (
-      <div className="flex items-center justify-center h-full text-gray-500">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-500 mx-auto mb-2" />
-          <p className="text-sm">加载中...</p>
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center" style={{ color: '#9CA3AF' }}>
+          <div className="animate-spin rounded-full h-6 w-6 mx-auto mb-2" style={{ borderWidth: 2, borderStyle: 'solid', borderColor: '#ECECE6', borderTopColor: '#6B7280' }} />
+          <p className="text-xs">加载中...</p>
         </div>
       </div>
     );
@@ -168,8 +176,8 @@ export function FileTree({ client, projectId, onFileSelect, onFolderSelect, root
 
   if (effectiveRootFiles.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full text-gray-500">
-        <p className="text-sm">空目录</p>
+      <div className="flex items-center justify-center h-full">
+        <p className="text-sm" style={{ color: '#9CA3AF' }}>空目录</p>
       </div>
     );
   }
@@ -179,7 +187,7 @@ export function FileTree({ client, projectId, onFileSelect, onFolderSelect, root
     : effectiveRootFiles;
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="h-full overflow-y-auto" style={{ padding: '8px 8px 16px' }}>
       {displayRootFiles.map((file) => renderTreeNode(file))}
     </div>
   );

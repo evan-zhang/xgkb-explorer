@@ -22,12 +22,19 @@ export function FileViewerModal({ client, file, content, isLoading, error, onClo
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-white">
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-200 bg-gray-50 flex-shrink-0">
-        <span className="text-sm font-medium text-gray-700 truncate">{file.name}</span>
+      <div
+        className="flex items-center justify-between px-8 py-3 border-b flex-shrink-0"
+        style={{ background: '#F5F3EE', borderColor: '#ECECE6' }}
+      >
+        <span
+          className="text-sm font-medium truncate"
+          style={{ fontFamily: 'Georgia, "Noto Serif SC", serif', color: '#1A1A1A' }}
+        >{file.name}</span>
         <button
           onClick={onClose}
           title="关闭 (Esc)"
-          className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-md transition-colors flex-shrink-0 ml-4"
+          className="flex items-center justify-center hover:bg-[#EDEBE4] hover:text-[#1A1A1A] transition-colors flex-shrink-0 ml-4"
+          style={{ width: 32, height: 32, borderRadius: 8, color: '#6B7280' }}
         >
           <X className="w-4 h-4" />
         </button>

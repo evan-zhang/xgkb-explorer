@@ -1,14 +1,27 @@
-/**
- * 项目看板：展示 projectsPath 目录下的所有项目文件夹（卡片网格）
- */
-
 import { useCallback, useState, useEffect } from 'react';
-import { Folder, RefreshCw, AlertCircle, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { RefreshCw, AlertCircle, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { KbApiClient } from '../lib/api';
 import type { FileListItem } from '../lib/types';
 import { useReadmePreview } from '../lib/hooks';
 
 const PAGE_SIZE = 12;
+
+const COVER_GRADIENTS: [string, string][] = [
+  ['#1E3A5F', '#2D5B8E'],
+  ['#4A2D6B', '#6B3FA0'],
+  ['#1B4332', '#2D6A4F'],
+  ['#B7542E', '#D77A4E'],
+  ['#2A2A2A', '#4A4A4A'],
+  ['#0F4C81', '#1D7FBF'],
+  ['#7C2D12', '#B45309'],
+  ['#1F2937', '#374151'],
+];
+
+function nameToGradient(name: string): [string, string] {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) { h = (h << 5) - h + name.charCodeAt(i); h |= 0; }
+  return COVER_GRADIENTS[Math.abs(h) % COVER_GRADIENTS.length];
+}
 
 interface ProjectCardProps {
   project: FileListItem;
@@ -18,6 +31,8 @@ interface ProjectCardProps {
 
 function ProjectCard({ project, client, onClick }: ProjectCardProps) {
   const { preview, isLoading: previewLoading } = useReadmePreview(client, String(project.id));
+  const [c1, c2] = nameToGradient(project.name);
+  const initial = project.name.charAt(0);
 
   const updateDate = project.updateTime
     ? new Date(project.updateTime).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
@@ -26,34 +41,50 @@ function ProjectCard({ project, client, onClick }: ProjectCardProps) {
   return (
     <div
       onClick={onClick}
-      className="group bg-white border border-gray-200 rounded-xl p-5 cursor-pointer hover:border-blue-300 hover:shadow-md transition-all duration-150"
+      className="group cursor-pointer transition-all duration-200 hover:-translate-y-1.5"
+      style={{
+        height: 256,
+        borderRadius: 12,
+        overflow: 'hidden',
+        background: '#FFFFFF',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+      }}
+      onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = '0 4px 8px rgba(0,0,0,0.05), 0 16px 32px rgba(0,0,0,0.10)'; }}
+      onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = '0 1px 3px rgba(0,0,0,0.08)'; }}
     >
-      <div className="flex items-start gap-3 mb-3">
-        <Folder className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
-        <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 leading-tight line-clamp-2">
+      {/* Gradient cover */}
+      <div style={{
+        height: 128,
+        background: `linear-gradient(135deg, ${c1} 0%, ${c2} 100%)`,
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        color: '#FFFFFF', padding: '0 16px', position: 'relative',
+      }}>
+        <div style={{ fontSize: 30, marginBottom: 6, fontFamily: 'Georgia, serif', fontWeight: 600, opacity: 0.9 }}>{initial}</div>
+        <div style={{ fontSize: 13, fontWeight: 600, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%', opacity: 0.95 }}>
           {project.name}
-        </h3>
+        </div>
       </div>
 
-      <div className="min-h-[3.5rem] mb-3">
-        {previewLoading ? (
-          <div className="space-y-1.5">
-            <div className="h-3 bg-gray-100 rounded animate-pulse w-full" />
-            <div className="h-3 bg-gray-100 rounded animate-pulse w-4/5" />
+      {/* Info section */}
+      <div style={{ height: 128, padding: '12px 16px 14px', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, fontSize: 13, color: '#4B5563', lineHeight: 1.55, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' } as React.CSSProperties}>
+          {previewLoading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              <div className="animate-pulse" style={{ height: 9, background: '#ECECE6', borderRadius: 2 }} />
+              <div className="animate-pulse" style={{ height: 9, background: '#ECECE6', borderRadius: 2, width: '80%' }} />
+            </div>
+          ) : preview ? preview : (
+            <span style={{ color: '#9CA3AF', fontStyle: 'italic' }}>暂无简介</span>
+          )}
+        </div>
+        {updateDate && (
+          <div style={{ fontSize: 11, color: '#9CA3AF', display: 'flex', alignItems: 'center', gap: 4, marginTop: 8, flexShrink: 0 }}>
+            <Clock style={{ width: 11, height: 11 }} />
+            {updateDate}
           </div>
-        ) : preview ? (
-          <p className="text-sm text-gray-500 line-clamp-3 leading-relaxed">{preview}</p>
-        ) : (
-          <p className="text-sm text-gray-300 italic">暂无简介</p>
         )}
       </div>
-
-      {updateDate && (
-        <div className="flex items-center gap-1 text-xs text-gray-400">
-          <Clock className="w-3 h-3" />
-          <span>{updateDate}</span>
-        </div>
-      )}
     </div>
   );
 }
@@ -85,21 +116,14 @@ export function ProjectsHub({ client, projects, isLoading, error, onSelectProjec
 
   if (isLoading) {
     return (
-      <div className="flex-1 p-8">
-        <div className="mb-6">
-          <div className="h-7 w-32 bg-gray-100 rounded animate-pulse mb-1" />
-          <div className="h-4 w-20 bg-gray-100 rounded animate-pulse" />
+      <div className="flex-1 overflow-y-auto" style={{ padding: '32px 40px 64px' }}>
+        <div style={{ marginBottom: 24 }}>
+          <div className="animate-pulse" style={{ height: 32, width: 160, background: '#ECECE6', borderRadius: 6, marginBottom: 8 }} />
+          <div className="animate-pulse" style={{ height: 16, width: 80, background: '#ECECE6', borderRadius: 4 }} />
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(196px, 1fr))', gap: 20 }}>
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="bg-white border border-gray-200 rounded-xl p-5">
-              <div className="h-5 bg-gray-100 rounded animate-pulse mb-3 w-3/4" />
-              <div className="space-y-1.5 mb-3">
-                <div className="h-3 bg-gray-100 rounded animate-pulse" />
-                <div className="h-3 bg-gray-100 rounded animate-pulse w-4/5" />
-              </div>
-              <div className="h-3 bg-gray-100 rounded animate-pulse w-1/3" />
-            </div>
+            <div key={i} className="animate-pulse" style={{ height: 256, borderRadius: 12, background: '#ECECE6' }} />
           ))}
         </div>
       </div>
@@ -109,13 +133,14 @@ export function ProjectsHub({ client, projects, isLoading, error, onSelectProjec
   if (error) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <div className="text-center text-red-500 px-8 max-w-md">
-          <AlertCircle className="w-12 h-12 mx-auto mb-4 opacity-70" />
-          <p className="font-medium mb-2">无法加载项目列表</p>
-          <p className="text-sm opacity-80 mb-4">{error}</p>
+        <div className="text-center px-8 max-w-md">
+          <AlertCircle style={{ width: 48, height: 48, color: '#DC2626', margin: '0 auto 16px', opacity: 0.7 }} />
+          <p style={{ color: '#DC2626', fontWeight: 500, marginBottom: 8 }}>无法加载项目列表</p>
+          <p style={{ fontSize: 13, color: '#9CA3AF', marginBottom: 16 }}>{error}</p>
           <button
             onClick={handleReload}
-            className="flex items-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-md text-sm mx-auto transition-colors"
+            className="flex items-center gap-2 mx-auto transition-colors"
+            style={{ padding: '8px 16px', background: '#FEF2F2', color: '#DC2626', borderRadius: 8, fontSize: 13, border: '1px solid #FECACA' }}
           >
             <RefreshCw className="w-4 h-4" />
             重试
@@ -126,15 +151,19 @@ export function ProjectsHub({ client, projects, isLoading, error, onSelectProjec
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-8">
-      <div className="flex items-center justify-between mb-6">
+    <div className="flex-1 overflow-y-auto" style={{ padding: '32px 40px 64px' }}>
+      {/* Section header */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">我的项目</h2>
-          <p className="text-sm text-gray-400 mt-0.5">共 {projects.length} 个</p>
+          <h2 style={{ fontFamily: 'Georgia, "Noto Serif SC", serif', fontSize: 28, fontWeight: 600, color: '#1A1A1A', letterSpacing: '0.3px' }}>
+            我的书架
+          </h2>
+          <p style={{ color: '#6B7280', fontSize: 14, marginTop: 4 }}>共 {projects.length} 个项目</p>
         </div>
         <button
           onClick={handleReload}
-          className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+          className="flex items-center justify-center hover:bg-[#F0EFEA] hover:text-[#1A1A1A] transition-colors"
+          style={{ width: 38, height: 38, borderRadius: 10, color: '#6B7280' }}
           title="刷新"
         >
           <RefreshCw className="w-4 h-4" />
@@ -142,13 +171,12 @@ export function ProjectsHub({ client, projects, isLoading, error, onSelectProjec
       </div>
 
       {projects.length === 0 ? (
-        <div className="text-center text-gray-400 py-16">
-          <Folder className="w-12 h-12 mx-auto mb-3 opacity-40" />
+        <div className="text-center py-16" style={{ color: '#9CA3AF' }}>
           <p>该目录下没有项目</p>
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(196px, 1fr))', gap: 20 }}>
             {paged.map((project) => (
               <ProjectCard
                 key={String(project.id)}
@@ -160,23 +188,37 @@ export function ProjectsHub({ client, projects, isLoading, error, onSelectProjec
           </div>
 
           {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-4 mt-8">
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, paddingTop: 32, paddingBottom: 8 }}>
               <button
                 onClick={() => setPage((p) => p - 1)}
                 disabled={page === 1}
-                className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                className="hover:border-[#2563EB] hover:text-[#2563EB] disabled:opacity-30 disabled:pointer-events-none transition-colors flex items-center gap-1"
+                style={{ padding: '8px 14px', border: '1px solid #E8E8E5', background: '#FFFFFF', borderRadius: 8, fontSize: 14, cursor: 'pointer', color: '#4B5563' }}
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="w-3.5 h-3.5" />
                 上一页
               </button>
-              <span className="text-sm text-gray-400">第 {page} / {totalPages} 页</span>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setPage(p)}
+                  className={p !== page ? 'hover:border-[#2563EB] hover:text-[#2563EB] transition-colors' : ''}
+                  style={p === page
+                    ? { padding: '8px 14px', background: '#1A1A1A', color: '#FFFFFF', borderRadius: 8, fontSize: 14 }
+                    : { padding: '8px 14px', border: '1px solid #E8E8E5', background: '#FFFFFF', color: '#4B5563', borderRadius: 8, fontSize: 14, cursor: 'pointer' }
+                  }
+                >{p}</button>
+              ))}
+
               <button
                 onClick={() => setPage((p) => p + 1)}
                 disabled={page === totalPages}
-                className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                className="hover:border-[#2563EB] hover:text-[#2563EB] disabled:opacity-30 disabled:pointer-events-none transition-colors flex items-center gap-1"
+                style={{ padding: '8px 14px', border: '1px solid #E8E8E5', background: '#FFFFFF', borderRadius: 8, fontSize: 14, cursor: 'pointer', color: '#4B5563' }}
               >
                 下一页
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
           )}

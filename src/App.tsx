@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { Settings, BookOpen } from 'lucide-react';
+import { Settings } from 'lucide-react';
 import { ConfigModal } from './components/ConfigModal';
 import { ProjectsHub } from './components/ProjectsHub';
 import { ProjectDetail } from './components/ProjectDetail';
@@ -82,46 +82,56 @@ function App() {
   const isConnecting = clientLoading || projectLoading;
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
+    <div className="h-screen flex flex-col bg-[#FAFAF7]">
       {/* 顶部导航栏 */}
-      <header className="flex items-center justify-between px-5 py-3 border-b border-gray-200 bg-white">
+      <header
+        className="flex items-center justify-between px-10 py-5 border-b border-[#ECECE6] flex-shrink-0"
+        style={{ background: 'rgba(250,250,247,0.92)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
+      >
         <div
           className="flex items-center gap-2.5 cursor-pointer"
           onClick={() => view === 'project' && handleBack()}
         >
-          <BookOpen className="w-5 h-5 text-blue-500" />
-          <h1 className="text-base font-semibold text-gray-800">玄关知识库浏览器</h1>
+          <div style={{
+            width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+            background: 'linear-gradient(135deg, #1A1A1A 0%, #3A3A3A 100%)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#F5E6D3', fontFamily: 'Georgia, serif', fontWeight: 700, fontSize: 16,
+            boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.06), 0 1px 2px rgba(0,0,0,0.15)',
+          }}>玄</div>
+          <span style={{ fontFamily: 'Georgia, "Noto Serif SC", serif', fontSize: 20, fontWeight: 600, letterSpacing: '0.5px', color: '#1A1A1A', whiteSpace: 'nowrap' }}>
+            玄关知识库 <span style={{ color: '#6B7280', fontWeight: 400, fontSize: 16 }}>/ Explorer</span>
+          </span>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* 设置按钮 */}
-          <button
-            onClick={() => setIsConfigModalOpen(true)}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
-            title="设置"
-          >
-            <Settings className="w-4.5 h-4.5" />
-          </button>
-        </div>
+        <button
+          onClick={() => setIsConfigModalOpen(true)}
+          className="flex items-center justify-center hover:bg-[#F0EFEA] hover:text-[#1A1A1A] transition-colors"
+          style={{ width: 38, height: 38, borderRadius: 10, color: '#4B5563' }}
+          title="设置"
+        >
+          <Settings className="w-5 h-5" />
+        </button>
       </header>
 
       {/* 主内容区 */}
       <main className="flex-1 flex overflow-hidden">
         {isConnecting ? (
           <div className="flex-1 flex items-center justify-center">
-            <div className="text-center text-gray-500">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-400 mx-auto mb-3" />
+            <div className="text-center" style={{ color: '#6B7280' }}>
+              <div className="animate-spin rounded-full h-10 w-10 mx-auto mb-3" style={{ borderWidth: 2, borderStyle: 'solid', borderColor: '#ECECE6', borderTopColor: '#2563EB' }} />
               <p className="text-sm">连接知识库...</p>
             </div>
           </div>
         ) : !client || !projectId ? (
           <div className="flex-1 flex items-center justify-center">
-            <div className="text-center text-gray-500 px-8">
-              <p className="text-sm mb-2">无法连接到知识库</p>
-              <p className="text-xs text-gray-400">{clientError}</p>
+            <div className="text-center px-8" style={{ color: '#6B7280' }}>
+              <p className="text-sm mb-2" style={{ color: '#4B5563' }}>无法连接到知识库</p>
+              <p className="text-xs" style={{ color: '#9CA3AF' }}>{clientError}</p>
               <button
                 onClick={() => setIsConfigModalOpen(true)}
-                className="mt-4 px-4 py-2 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                className="mt-4 px-4 py-2 text-sm text-white rounded-lg hover:opacity-90 transition-opacity"
+                style={{ background: '#1A1A1A' }}
               >
                 打开设置
               </button>

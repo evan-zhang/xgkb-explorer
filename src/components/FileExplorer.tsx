@@ -29,34 +29,37 @@ function ExplorerCard({ item, onClick }: { item: FileListItem; onClick: () => vo
   return (
     <div
       onClick={onClick}
-      className="group flex flex-col items-center gap-2 p-3 rounded-xl border border-gray-100
-        cursor-pointer hover:border-blue-200 hover:bg-blue-50/40 hover:shadow-sm
-        transition-all duration-150 select-none"
+      className="group flex flex-col items-center gap-2 p-3 rounded-xl cursor-pointer
+        transition-all duration-150 select-none
+        bg-white border border-[#ECECE6]
+        hover:border-[#C8C8C0] hover:bg-[#F5F3EE] hover:shadow-sm"
     >
-      <div className={`w-12 h-12 flex items-center justify-center rounded-xl flex-shrink-0
-        ${isFolder ? 'bg-blue-50' : 'bg-gray-50'}`}
+      <div
+        className="w-12 h-12 flex items-center justify-center rounded-xl flex-shrink-0"
+        style={{ background: isFolder ? '#FBF7EE' : '#F5F3EE' }}
       >
         {isFolder ? (
-          <Folder className="w-7 h-7 text-blue-400" />
+          <Folder style={{ width: 28, height: 28, color: '#B45309' }} />
         ) : (
           <FileText className={`w-6 h-6 ${getFileIconColor(suffix)}`} />
         )}
       </div>
 
-      <p className="text-xs text-center text-gray-700 group-hover:text-blue-700
-        line-clamp-2 leading-tight w-full break-all min-h-[2.5rem]"
+      <p
+        className="text-xs text-center line-clamp-2 leading-tight w-full break-all min-h-[2.5rem]"
+        style={{ color: '#4B5563' }}
       >
         {item.name}
       </p>
 
       <div className="flex flex-col items-center gap-0.5 mt-auto">
         {!isFolder && suffix && (
-          <span className="text-[10px] uppercase tracking-wider text-gray-300 font-semibold">
+          <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: '#C0C0B8' }}>
             {suffix}
           </span>
         )}
         {updateDate && (
-          <span className="text-[10px] text-gray-300">{updateDate}</span>
+          <span className="text-[10px]" style={{ color: '#C0C0B8' }}>{updateDate}</span>
         )}
       </div>
     </div>
@@ -91,15 +94,15 @@ export function FileExplorer({ client, folderId, onFileSelect, onFolderNavigate 
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-40 text-gray-400">
-        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-300" />
+      <div className="flex items-center justify-center h-40">
+        <div className="animate-spin rounded-full h-6 w-6" style={{ borderWidth: 2, borderStyle: 'solid', borderColor: '#ECECE6', borderTopColor: '#6B7280' }} />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-40 text-red-400 text-sm px-4 text-center">
+      <div className="flex items-center justify-center h-40 text-sm px-4 text-center" style={{ color: '#DC2626' }}>
         {error}
       </div>
     );
@@ -107,7 +110,7 @@ export function FileExplorer({ client, folderId, onFileSelect, onFolderNavigate 
 
   if (files.length === 0) {
     return (
-      <div className="flex items-center justify-center h-40 text-gray-400 text-sm">
+      <div className="flex items-center justify-center h-40 text-sm" style={{ color: '#9CA3AF' }}>
         空文件夹
       </div>
     );
