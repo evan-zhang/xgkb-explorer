@@ -147,6 +147,72 @@ export function FilePreview({ content, fileName, filePath, isLoading, error, cli
 
     // ===== HTML 文件预览 =====
     if (fileType === 'html') {
+      // getFullFileContent returns AI-extracted Markdown text, not raw HTML bytes.
+      // Only use the iframe path if the content is genuine HTML markup.
+      const trimmed = content?.trimStart() ?? '';
+      const isActualHtml =
+        trimmed.startsWith('<!DOCTYPE') ||
+        trimmed.startsWith('<!doctype') ||
+        trimmed.startsWith('<html') ||
+        /^<[a-z][^>]*>/i.test(trimmed);
+
+      if (!isActualHtml) {
+        // AI-extracted content — render as Markdown (same path as .md files)
+        return (
+          <div className="prose prose-sm max-w-none prose-headings:font-semibold prose-headings:border-b prose-headings:pb-2 prose-headings:border-gray-200 prose-a:text-blue-600 prose-code:bg-gray-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-pink-600 prose-pre:bg-gray-900 prose-pre:text-gray-100 px-8 py-6">
+            <ReactMarkdown
+              rehypePlugins={[rehypeRaw]}
+              components={{
+                code(props) {
+                  const { className, children } = props;
+                  const match = /language-(\w+)/.exec(className || '');
+                  const language = match ? match[1] : '';
+                  return language ? (
+                    <SyntaxHighlighter
+                      style={oneLight as any}
+                      language={LANG_MAP[language] || language}
+                      PreTag="div"
+                      className="rounded-md text-sm"
+                      customStyle={{ margin: 0, borderRadius: '8px', fontSize: '13px' }}
+                    >
+                      {String(children).replace(/\n$/, '')}
+                    </SyntaxHighlighter>
+                  ) : (
+                    <code className="bg-gray-100 px-1 py-0.5 rounded text-sm font-mono text-pink-600">
+                      {children}
+                    </code>
+                  );
+                },
+                table({ children }) {
+                  return (
+                    <div className="overflow-x-auto my-4">
+                      <table className="min-w-full border-collapse border border-gray-300 text-sm">{children}</table>
+                    </div>
+                  );
+                },
+                th({ children }) {
+                  return <th className="border border-gray-300 px-3 py-1.5 bg-gray-100 font-semibold text-left">{children}</th>;
+                },
+                td({ children }) {
+                  return <td className="border border-gray-300 px-3 py-1.5">{children}</td>;
+                },
+                img({ src, alt }) {
+                  return <img src={src as string} alt={alt || ''} className="max-w-full rounded-md my-2" />;
+                },
+                a({ href, children }) {
+                  return <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline">{children}</a>;
+                },
+                blockquote({ children }) {
+                  return <blockquote className="border-l-4 border-gray-300 pl-4 italic text-gray-600 my-2">{children}</blockquote>;
+                },
+              }}
+            >
+              {content || ''}
+            </ReactMarkdown>
+          </div>
+        );
+      }
+
       return (
         <div className="h-full flex flex-col">
           {/* 切换栏 */}
