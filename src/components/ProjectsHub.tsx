@@ -1,10 +1,11 @@
 import { useCallback, useState, useEffect } from 'react';
-import { RefreshCw, AlertCircle, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { RefreshCw, AlertCircle, Clock, ChevronLeft, ChevronRight, Star } from 'lucide-react';
 import type { KbApiClient } from '../lib/api';
 import type { FileListItem } from '../lib/types';
 import { useReadmePreview } from '../lib/hooks';
 
 const PAGE_SIZE = 12;
+const STARRED_KEY = 'xgkb:starred_projects';
 
 const COVER_GRADIENTS: [string, string][] = [
   ['#1E3A5F', '#2D5B8E'],
@@ -23,13 +24,26 @@ function nameToGradient(name: string): [string, string] {
   return COVER_GRADIENTS[Math.abs(h) % COVER_GRADIENTS.length];
 }
 
+function loadStarred(): Set<string> {
+  try {
+    const raw = localStorage.getItem(STARRED_KEY);
+    return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
+  } catch { return new Set(); }
+}
+
+function saveStarred(s: Set<string>) {
+  localStorage.setItem(STARRED_KEY, JSON.stringify([...s]));
+}
+
 interface ProjectCardProps {
   project: FileListItem;
   client: KbApiClient;
+  isStarred: boolean;
   onClick: () => void;
+  onToggleStar: (e: React.MouseEvent) => void;
 }
 
-function ProjectCard({ project, client, onClick }: ProjectCardProps) {
+function ProjectCard({ project, client, isStarred, onClick, onToggleStar }: ProjectCardProps) {
   const { preview, isLoading: previewLoading } = useReadmePreview(client, String(project.id));
   const [c1, c2] = nameToGradient(project.name);
   const initial = project.name.charAt(0);
@@ -64,6 +78,24 @@ function ProjectCard({ project, client, onClick }: ProjectCardProps) {
         <div style={{ fontSize: 13, fontWeight: 600, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%', opacity: 0.95 }}>
           {project.name}
         </div>
+
+        {/* Star button */}
+        <button
+          onClick={onToggleStar}
+          title={isStarred ? '取消收藏' : '收藏此项目'}
+          className="transition-all duration-150"
+          style={{
+            position: 'absolute', top: 8, right: 8,
+            width: 28, height: 28,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            borderRadius: 6,
+            background: isStarred ? 'rgba(252,211,77,0.2)' : 'rgba(255,255,255,0.12)',
+            color: isStarred ? '#FCD34D' : 'rgba(255,255,255,0.65)',
+            border: 'none', cursor: 'pointer',
+          }}
+        >
+          <Star style={{ width: 14, height: 14 }} fill={isStarred ? 'currentColor' : 'none'} />
+        </button>
       </div>
 
       {/* Info section */}
@@ -101,18 +133,35 @@ interface ProjectsHubProps {
 export function ProjectsHub({ client, projects, isLoading, error, onSelectProject, onReload }: ProjectsHubProps) {
   const handleReload = useCallback(() => onReload(), [onReload]);
   const [page, setPage] = useState(1);
+  const [starred, setStarred] = useState<Set<string>>(loadStarred);
 
   useEffect(() => { setPage(1); }, [projects]);
 
-  const sorted = [...projects].sort((a, b) => {
+  const toggleStar = useCallback((projectId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setStarred(prev => {
+      const next = new Set(prev);
+      if (next.has(projectId)) next.delete(projectId);
+      else next.add(projectId);
+      saveStarred(next);
+      return next;
+    });
+    setPage(1);
+  }, []);
+
+  const byUpdateTime = (a: FileListItem, b: FileListItem) => {
     if (!a.updateTime && !b.updateTime) return 0;
     if (!a.updateTime) return 1;
     if (!b.updateTime) return -1;
     return b.updateTime - a.updateTime;
-  });
+  };
 
-  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
-  const paged = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const sortedAll = [...projects].sort(byUpdateTime);
+  const starredProjects = sortedAll.filter(p => starred.has(String(p.id)));
+  const unstarredProjects = sortedAll.filter(p => !starred.has(String(p.id)));
+
+  const totalPages = Math.max(1, Math.ceil(unstarredProjects.length / PAGE_SIZE));
+  const paged = unstarredProjects.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   if (isLoading) {
     return (
@@ -150,14 +199,28 @@ export function ProjectsHub({ client, projects, isLoading, error, onSelectProjec
     );
   }
 
+  const SectionHead = ({ title, count, action }: { title: string; count: number; action?: React.ReactNode }) => (
+    <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 18 }}>
+      <div>
+        <h2 style={{ fontFamily: 'Georgia, "Noto Serif SC", serif', fontSize: 22, fontWeight: 600, color: '#1A1A1A', letterSpacing: '0.3px', display: 'flex', alignItems: 'center', gap: 10 }}>
+          {title}
+          <span style={{ fontFamily: 'inherit', fontSize: 12, fontWeight: 500, background: '#F0EFEA', color: '#6B7280', padding: '2px 9px', borderRadius: 10, letterSpacing: '0.3px' }}>
+            {count}
+          </span>
+        </h2>
+      </div>
+      {action}
+    </div>
+  );
+
   return (
     <div className="flex-1 overflow-y-auto" style={{ padding: '32px 40px 64px' }}>
-      {/* Section header */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 24 }}>
+      {/* 顶部大标题 + 刷新 */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 32 }}>
         <div>
-          <h2 style={{ fontFamily: 'Georgia, "Noto Serif SC", serif', fontSize: 28, fontWeight: 600, color: '#1A1A1A', letterSpacing: '0.3px' }}>
+          <h1 style={{ fontFamily: 'Georgia, "Noto Serif SC", serif', fontSize: 28, fontWeight: 600, color: '#1A1A1A', letterSpacing: '0.3px' }}>
             我的书架
-          </h2>
+          </h1>
           <p style={{ color: '#6B7280', fontSize: 14, marginTop: 4 }}>共 {projects.length} 个项目</p>
         </div>
         <button
@@ -176,50 +239,83 @@ export function ProjectsHub({ client, projects, isLoading, error, onSelectProjec
         </div>
       ) : (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(196px, 1fr))', gap: 20 }}>
-            {paged.map((project) => (
-              <ProjectCard
-                key={String(project.id)}
-                project={project}
-                client={client}
-                onClick={() => onSelectProject(project)}
+          {/* 收藏分区 */}
+          {starredProjects.length > 0 && (
+            <div style={{ marginBottom: 48 }}>
+              <SectionHead
+                title="收藏"
+                count={starredProjects.length}
               />
-            ))}
-          </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(196px, 1fr))', gap: 20 }}>
+                {starredProjects.map((project) => (
+                  <ProjectCard
+                    key={String(project.id)}
+                    project={project}
+                    client={client}
+                    isStarred={true}
+                    onClick={() => onSelectProject(project)}
+                    onToggleStar={(e) => toggleStar(String(project.id), e)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
-          {totalPages > 1 && (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, paddingTop: 32, paddingBottom: 8 }}>
-              <button
-                onClick={() => setPage((p) => p - 1)}
-                disabled={page === 1}
-                className="hover:border-[#2563EB] hover:text-[#2563EB] disabled:opacity-30 disabled:pointer-events-none transition-colors flex items-center gap-1"
-                style={{ padding: '8px 14px', border: '1px solid #E8E8E5', background: '#FFFFFF', borderRadius: 8, fontSize: 14, cursor: 'pointer', color: '#4B5563' }}
-              >
-                <ChevronLeft className="w-3.5 h-3.5" />
-                上一页
-              </button>
+          {/* 其他项目分区 */}
+          {unstarredProjects.length > 0 && (
+            <div>
+              <SectionHead
+                title={starredProjects.length > 0 ? '其他项目' : '所有项目'}
+                count={unstarredProjects.length}
+              />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(196px, 1fr))', gap: 20 }}>
+                {paged.map((project) => (
+                  <ProjectCard
+                    key={String(project.id)}
+                    project={project}
+                    client={client}
+                    isStarred={false}
+                    onClick={() => onSelectProject(project)}
+                    onToggleStar={(e) => toggleStar(String(project.id), e)}
+                  />
+                ))}
+              </div>
 
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPage(p)}
-                  className={p !== page ? 'hover:border-[#2563EB] hover:text-[#2563EB] transition-colors' : ''}
-                  style={p === page
-                    ? { padding: '8px 14px', background: '#1A1A1A', color: '#FFFFFF', borderRadius: 8, fontSize: 14 }
-                    : { padding: '8px 14px', border: '1px solid #E8E8E5', background: '#FFFFFF', color: '#4B5563', borderRadius: 8, fontSize: 14, cursor: 'pointer' }
-                  }
-                >{p}</button>
-              ))}
+              {totalPages > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, paddingTop: 32, paddingBottom: 8 }}>
+                  <button
+                    onClick={() => setPage((p) => p - 1)}
+                    disabled={page === 1}
+                    className="hover:border-[#2563EB] hover:text-[#2563EB] disabled:opacity-30 disabled:pointer-events-none transition-colors flex items-center gap-1"
+                    style={{ padding: '8px 14px', border: '1px solid #E8E8E5', background: '#FFFFFF', borderRadius: 8, fontSize: 14, cursor: 'pointer', color: '#4B5563' }}
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                    上一页
+                  </button>
 
-              <button
-                onClick={() => setPage((p) => p + 1)}
-                disabled={page === totalPages}
-                className="hover:border-[#2563EB] hover:text-[#2563EB] disabled:opacity-30 disabled:pointer-events-none transition-colors flex items-center gap-1"
-                style={{ padding: '8px 14px', border: '1px solid #E8E8E5', background: '#FFFFFF', borderRadius: 8, fontSize: 14, cursor: 'pointer', color: '#4B5563' }}
-              >
-                下一页
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => setPage(p)}
+                      className={p !== page ? 'hover:border-[#2563EB] hover:text-[#2563EB] transition-colors' : ''}
+                      style={p === page
+                        ? { padding: '8px 14px', background: '#1A1A1A', color: '#FFFFFF', borderRadius: 8, fontSize: 14 }
+                        : { padding: '8px 14px', border: '1px solid #E8E8E5', background: '#FFFFFF', color: '#4B5563', borderRadius: 8, fontSize: 14, cursor: 'pointer' }
+                      }
+                    >{p}</button>
+                  ))}
+
+                  <button
+                    onClick={() => setPage((p) => p + 1)}
+                    disabled={page === totalPages}
+                    className="hover:border-[#2563EB] hover:text-[#2563EB] disabled:opacity-30 disabled:pointer-events-none transition-colors flex items-center gap-1"
+                    style={{ padding: '8px 14px', border: '1px solid #E8E8E5', background: '#FFFFFF', borderRadius: 8, fontSize: 14, cursor: 'pointer', color: '#4B5563' }}
+                  >
+                    下一页
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </>
