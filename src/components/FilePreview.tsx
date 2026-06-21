@@ -73,18 +73,28 @@ const mdComponents = {
     if (language === 'mermaid') {
       return <MermaidChart code={String(children).replace(/\n$/, '')} />;
     }
-    return language ? (
-      <SyntaxHighlighter
-        style={oneLight as any}
-        language={LANG_MAP[language] || language}
-        PreTag="div"
-        className="rounded-md text-sm"
-        customStyle={{ margin: 0, borderRadius: '8px', fontSize: '13px' }}
-      >
-        {String(children).replace(/\n$/, '')}
-      </SyntaxHighlighter>
-    ) : (
-      <code className="bg-gray-100 px-1 py-0.5 rounded text-sm font-mono text-pink-600">
+    if (language) {
+      const displayLang = language !== 'text' ? language : null;
+      return (
+        <div style={{ margin: '16px 0', border: '1px solid #E8E8E3', borderRadius: 10, overflow: 'hidden' }}>
+          {displayLang && (
+            <div style={{ display: 'flex', alignItems: 'center', background: '#F0EFE9', borderBottom: '1px solid #E8E8E3', padding: '4px 14px' }}>
+              <span style={{ fontSize: 11, color: '#9CA3AF', fontFamily: 'monospace', letterSpacing: '0.04em' }}>{displayLang}</span>
+            </div>
+          )}
+          <SyntaxHighlighter
+            style={oneLight as any}
+            language={LANG_MAP[language] || language}
+            PreTag="div"
+            customStyle={{ margin: 0, borderRadius: 0, fontSize: 13, lineHeight: 1.6, padding: '14px 18px', background: '#F6F8FA', overflowX: 'auto' }}
+          >
+            {String(children).replace(/\n$/, '')}
+          </SyntaxHighlighter>
+        </div>
+      );
+    }
+    return (
+      <code style={{ background: '#F0EFE9', borderRadius: 4, padding: '2px 6px', fontSize: '0.875em', fontFamily: 'monospace', color: '#374151' }}>
         {children}
       </code>
     );
@@ -299,15 +309,16 @@ export function FilePreview({ content, fileName, filePath, isLoading, error, cli
       const language = LANG_MAP[suffix] || suffix;
       return (
         <div className="px-4 py-4">
-          <SyntaxHighlighter
-            style={oneLight as any}
-            language={language}
-            showLineNumbers
-            className="rounded-md text-sm"
-            customStyle={{ margin: 0, borderRadius: '8px', fontSize: '13px' }}
-          >
-            {content || ''}
-          </SyntaxHighlighter>
+          <div style={{ border: '1px solid #E8E8E3', borderRadius: 10, overflow: 'hidden' }}>
+            <SyntaxHighlighter
+              style={oneLight as any}
+              language={language}
+              showLineNumbers
+              customStyle={{ margin: 0, borderRadius: 0, fontSize: 13, lineHeight: 1.6, padding: '14px 18px', background: '#F6F8FA', overflowX: 'auto' }}
+            >
+              {content || ''}
+            </SyntaxHighlighter>
+          </div>
         </div>
       );
     }

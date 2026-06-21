@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { X, AlertCircle } from 'lucide-react';
+import { X, AlertCircle, ExternalLink } from 'lucide-react';
 import { FilePreview } from './FilePreview';
 import { getConfig } from '../lib/config';
 import type { KbApiClient } from '../lib/api';
@@ -73,6 +73,17 @@ export function FileViewerModal({ client, file, onClose }: FileViewerModalProps)
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
+
+  const openInNewTab = async () => {
+    let url: string | null = null;
+    if (state.phase === 'image' || state.phase === 'html' || state.phase === 'iframe') {
+      url = state.url;
+    } else if (state.phase === 'content') {
+      const r = await client.getDownloadInfo(String(file.id), false);
+      if (r.ok && r.value.downloadUrl) url = r.value.downloadUrl;
+    }
+    if (url) window.open(url, '_blank', 'noopener,noreferrer');
+  };
 
   const renderBody = () => {
     switch (state.phase) {
@@ -152,14 +163,26 @@ export function FileViewerModal({ client, file, onClose }: FileViewerModalProps)
           style={{ fontFamily: 'Georgia, "Noto Serif SC", serif', color: '#1A1A1A' }}
         >{file.name}</span>
 
-        <button
-          onClick={onClose}
-          title="关闭 (Esc)"
-          className="flex items-center justify-center hover:bg-[#EDEBE4] hover:text-[#1A1A1A] transition-colors flex-shrink-0 ml-4"
-          style={{ width: 32, height: 32, borderRadius: 8, color: '#6B7280' }}
-        >
-          <X className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-1 flex-shrink-0 ml-4">
+          {state.phase !== 'loading' && state.phase !== 'error' && (
+            <button
+              onClick={openInNewTab}
+              title="在新标签页打开"
+              className="flex items-center justify-center hover:bg-[#EDEBE4] hover:text-[#1A1A1A] transition-colors"
+              style={{ width: 32, height: 32, borderRadius: 8, color: '#6B7280' }}
+            >
+              <ExternalLink className="w-4 h-4" />
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            title="关闭 (Esc)"
+            className="flex items-center justify-center hover:bg-[#EDEBE4] hover:text-[#1A1A1A] transition-colors"
+            style={{ width: 32, height: 32, borderRadius: 8, color: '#6B7280' }}
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* 内容区 */}
