@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { X, AlertCircle, ExternalLink } from 'lucide-react';
+import { X, AlertCircle, ExternalLink, Link, Check } from 'lucide-react';
 import { FilePreview } from './FilePreview';
 import { getConfig } from '../lib/config';
 import type { KbApiClient } from '../lib/api';
@@ -25,6 +25,7 @@ type PreviewState =
 
 export function FileViewerModal({ client, file, onClose }: FileViewerModalProps) {
   const [state, setState] = useState<PreviewState>({ phase: 'loading' });
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     setState({ phase: 'loading' });
@@ -73,6 +74,17 @@ export function FileViewerModal({ client, file, onClose }: FileViewerModalProps)
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
+
+  const copyKbLink = async () => {
+    const suffix = (file.name.split('.').pop() ?? '').toLowerCase();
+    const format = MD_EXTS.includes(suffix) ? 'md' : 'html';
+    const r = await client.getPreviewTicket(String(file.id), format, file.name);
+    if (r.ok) {
+      await navigator.clipboard.writeText(r.value.previewUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }
+  };
 
   const openInNewTab = async () => {
     let url: string | null = null;
@@ -164,6 +176,14 @@ export function FileViewerModal({ client, file, onClose }: FileViewerModalProps)
         >{file.name}</span>
 
         <div className="flex items-center gap-1 flex-shrink-0 ml-4">
+          <button
+            onClick={copyKbLink}
+            title="复制 KB 预览链接"
+            className="flex items-center justify-center hover:bg-[#EDEBE4] transition-colors"
+            style={{ width: 32, height: 32, borderRadius: 8, color: copied ? '#16A34A' : '#6B7280' }}
+          >
+            {copied ? <Check className="w-4 h-4" /> : <Link className="w-4 h-4" />}
+          </button>
           {state.phase !== 'loading' && state.phase !== 'error' && (
             <button
               onClick={openInNewTab}
