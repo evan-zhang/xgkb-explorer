@@ -107,10 +107,9 @@ export function FileViewerModal({ client, file, onClose }: FileViewerModalProps)
     } else if (state.phase === 'content') {
       const suffix = (file.name.split('.').pop() ?? '').toLowerCase();
       if (MD_EXTS.includes(suffix) || HTML_EXTS.includes(suffix)) {
-        // MD/HTML: open via KB preview service so browser renders it, not downloads it
-        const format = MD_EXTS.includes(suffix) ? 'md' : 'html';
-        const r = await client.getPreviewTicket(String(file.id), format, file.name);
-        if (r.ok) url = r.value.previewUrl;
+        // Open our own app in standalone preview mode — same rendering as in-app
+        const qs = new URLSearchParams({ mode: 'preview', fileId: String(file.id), fileName: file.name });
+        url = `${window.location.pathname}?${qs}`;
       } else {
         const r = await client.getDownloadInfo(String(file.id), false);
         if (r.ok && r.value.downloadUrl) url = r.value.downloadUrl;
