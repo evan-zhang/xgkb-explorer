@@ -21,6 +21,7 @@ export interface FileListItem {
   suffix?: string;
   size?: number;
   hasChild?: boolean;
+  createTime?: number;
   updateTime?: number;
 }
 
@@ -28,6 +29,7 @@ export interface FileListItem {
 export interface FileMeta {
   fileId: string | number;
   name: string;
+  createTime?: number;
   updateTime?: number;
   parentId?: string | number | null;
   deleted?: boolean;

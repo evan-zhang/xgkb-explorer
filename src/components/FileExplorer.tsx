@@ -40,8 +40,9 @@ function ExplorerCard({ item, onClick, onContextMenu }: ExplorerCardProps) {
 
   const isFolder = item.type === 1;
   const suffix = isFolder ? '' : (item.name.split('.').pop()?.toLowerCase() || '');
-  const updateDate = item.updateTime
-    ? new Date(item.updateTime).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
+  const dateTs = item.updateTime ?? item.createTime;
+  const updateDate = dateTs
+    ? new Date(dateTs).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
     : null;
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -194,8 +195,12 @@ export function FileExplorer({ client, folderId, projectId, onFileSelect, onFold
       const metaMap = new Map(metaResult.value.map(m => [String(m.fileId), m]));
       setFiles(prev => prev.map(f => {
         const meta = metaMap.get(String(f.id));
-        if (!meta?.updateTime) return f;
-        return { ...f, updateTime: meta.updateTime };
+        if (!meta) return f;
+        return {
+          ...f,
+          ...(meta.updateTime ? { updateTime: meta.updateTime } : {}),
+          ...(meta.createTime ? { createTime: meta.createTime } : {}),
+        };
       }));
     };
 

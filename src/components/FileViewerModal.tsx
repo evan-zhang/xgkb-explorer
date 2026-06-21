@@ -178,12 +178,12 @@ export function FileViewerModal({ client, file, onClose }: FileViewerModalProps)
       >
         <div className="min-w-0 flex-1 mr-4">
           <p className="text-sm font-medium truncate" style={{ fontFamily: 'Georgia, "Noto Serif SC", serif', color: '#1A1A1A' }}>{file.name}</p>
-          {(file.size || file.updateTime) && (
+          {(file.size || file.updateTime || file.createTime) && (
             <p className="text-[11px] mt-0.5" style={{ color: '#9CA3AF' }}>
               {[
                 file.size ? formatSize(file.size) : null,
-                file.updateTime
-                  ? new Date(file.updateTime).toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' })
+                (file.updateTime ?? file.createTime)
+                  ? new Date((file.updateTime ?? file.createTime)!).toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' })
                   : null,
               ].filter(Boolean).join(' · ')}
             </p>
