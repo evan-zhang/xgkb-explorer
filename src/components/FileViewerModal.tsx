@@ -11,10 +11,12 @@ interface FileViewerModalProps {
 }
 
 const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico'];
+const HTML_EXTS = ['html', 'htm'];
 
 type PreviewState =
   | { phase: 'loading' }
   | { phase: 'image'; url: string }
+  | { phase: 'html'; url: string }
   | { phase: 'content'; content: string }
   | { phase: 'error'; message: string };
 
@@ -34,7 +36,16 @@ export function FileViewerModal({ client, file, onClose }: FileViewerModalProps)
       return;
     }
 
-    // md、html、代码、文本等所有文本类型 — 统一走 FilePreview 自渲染
+    // HTML 文件：用真实文件 URL 加载，保留 JS/CSS/外部资源完整渲染能力
+    if (HTML_EXTS.includes(suffix)) {
+      client.getDownloadInfo(fileId, false).then((r) => {
+        if (r.ok && r.value.downloadUrl) setState({ phase: 'html', url: r.value.downloadUrl });
+        else setState({ phase: 'error', message: r.ok ? '无法获取 HTML 文件链接' : r.error });
+      });
+      return;
+    }
+
+    // md、代码、文本等 — 走 FilePreview 自渲染
     client.getFullFileContent(fileId).then((r) => {
       if (r.ok) setState({ phase: 'content', content: r.value });
       else setState({ phase: 'error', message: r.error });
@@ -83,6 +94,16 @@ export function FileViewerModal({ client, file, onClose }: FileViewerModalProps)
               onError={() => setState({ phase: 'error', message: '图片加载失败' })}
             />
           </div>
+        );
+
+      case 'html':
+        return (
+          <iframe
+            src={state.url}
+            title={file.name}
+            className="flex-1 w-full border-0"
+            style={{ minHeight: 0 }}
+          />
         );
 
       case 'content':
