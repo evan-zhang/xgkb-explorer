@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { X, AlertCircle } from 'lucide-react';
 import { FilePreview } from './FilePreview';
+import { getConfig } from '../lib/config';
 import type { KbApiClient } from '../lib/api';
 import type { FileListItem } from '../lib/types';
 
@@ -12,11 +13,13 @@ interface FileViewerModalProps {
 
 const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico'];
 const HTML_EXTS = ['html', 'htm'];
+const MD_EXTS = ['md', 'markdown', 'mdown', 'mkd'];
 
 type PreviewState =
   | { phase: 'loading' }
   | { phase: 'image'; url: string }
-  | { phase: 'html'; url: string }
+  | { phase: 'html'; url: string }      // 真实 HTML 文件，iframe src 加载
+  | { phase: 'iframe'; url: string }    // KB 预览服务外链
   | { phase: 'content'; content: string }
   | { phase: 'error'; message: string };
 
@@ -28,6 +31,9 @@ export function FileViewerModal({ client, file, onClose }: FileViewerModalProps)
     const suffix = (file.name.split('.').pop() ?? '').toLowerCase();
     const fileId = String(file.id);
 
+    const { previewMode } = getConfig();
+
+    // 图片：始终自渲染
     if (IMAGE_EXTS.includes(suffix)) {
       client.getDownloadInfo(fileId).then((r) => {
         if (r.ok && r.value.downloadUrl) setState({ phase: 'image', url: r.value.downloadUrl });
@@ -36,7 +42,17 @@ export function FileViewerModal({ client, file, onClose }: FileViewerModalProps)
       return;
     }
 
-    // HTML 文件：用真实文件 URL 加载，保留 JS/CSS/外部资源完整渲染能力
+    // KB 预览模式：MD / HTML 走外部预览服务
+    if (previewMode === 'kb' && (MD_EXTS.includes(suffix) || HTML_EXTS.includes(suffix))) {
+      const format = MD_EXTS.includes(suffix) ? 'md' : 'html';
+      client.getPreviewTicket(fileId, format, file.name).then((r) => {
+        if (r.ok) setState({ phase: 'iframe', url: r.value.previewUrl });
+        else setState({ phase: 'error', message: r.error });
+      });
+      return;
+    }
+
+    // HTML 文件（自渲染模式）：用下载 URL 在 iframe 中加载真实文件
     if (HTML_EXTS.includes(suffix)) {
       client.getDownloadInfo(fileId, false).then((r) => {
         if (r.ok && r.value.downloadUrl) setState({ phase: 'html', url: r.value.downloadUrl });
@@ -45,7 +61,7 @@ export function FileViewerModal({ client, file, onClose }: FileViewerModalProps)
       return;
     }
 
-    // md、代码、文本等 — 走 FilePreview 自渲染
+    // MD、代码、文本 — 走 FilePreview 自渲染
     client.getFullFileContent(fileId).then((r) => {
       if (r.ok) setState({ phase: 'content', content: r.value });
       else setState({ phase: 'error', message: r.error });
@@ -97,6 +113,7 @@ export function FileViewerModal({ client, file, onClose }: FileViewerModalProps)
         );
 
       case 'html':
+      case 'iframe':
         return (
           <iframe
             src={state.url}
