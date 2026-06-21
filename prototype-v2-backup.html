@@ -1,0 +1,2424 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+<title>玄关知识库</title>
+<style>
+  /* ============ Reset & Base ============ */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: #FAFAF7;
+    color: #1A1A1A;
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow: hidden;
+  }
+  button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+  a { color: inherit; text-decoration: none; }
+  input, textarea { font-family: inherit; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: #D8D8D2; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #B8B8B0; }
+  ::-webkit-scrollbar-track { background: transparent; }
+
+  /* ============ Layout ============ */
+  .app { width: 100%; height: 100vh; position: relative; overflow: hidden; }
+  .page {
+    position: absolute; inset: 0;
+    background: #FAFAF7;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.28s ease;
+    display: flex; flex-direction: column;
+  }
+  .page.active { opacity: 1; pointer-events: auto; }
+
+  /* ============ Typography Helpers ============ */
+  .serif { font-family: Georgia, "Noto Serif SC", "Source Han Serif SC", "Songti SC", "SimSun", serif; }
+
+  /* ============ SVG Icons ============ */
+  .icon { width: 16px; height: 16px; flex-shrink: 0; }
+  .icon-sm { width: 14px; height: 14px; }
+  .icon-lg { width: 20px; height: 20px; }
+  .icon-xl { width: 24px; height: 24px; }
+
+  /* ===================================================
+     PAGE 1 — LIBRARY (SHELF)
+     =================================================== */
+  .lib-topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 40px;
+    border-bottom: 1px solid #ECECE6;
+    background: rgba(250,250,247,0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand-mark {
+    width: 30px; height: 30px; border-radius: 8px;
+    background: linear-gradient(135deg, #1A1A1A 0%, #3A3A3A 100%);
+    display: flex; align-items: center; justify-content: center;
+    color: #F5E6D3; font-family: Georgia, serif; font-weight: 700; font-size: 16px;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06), 0 1px 2px rgba(0,0,0,0.15);
+  }
+  .brand-name {
+    font-family: Georgia, "Noto Serif SC", serif;
+    font-size: 20px; font-weight: 600; letter-spacing: 0.5px;
+  }
+  .brand-name .accent { color: #6B7280; font-weight: 400; font-size: 16px; margin-left: 4px; }
+
+  .lib-search {
+    flex: 0 1 380px; position: relative;
+  }
+  .lib-search input {
+    width: 100%; height: 38px; padding: 0 16px 0 38px;
+    background: #FFFFFF; border: 1px solid #E8E8E5;
+    border-radius: 10px; font-size: 14px; color: #1A1A1A;
+    transition: all 0.18s;
+  }
+  .lib-search input::placeholder { color: #9CA3AF; }
+  .lib-search input:focus {
+    outline: none; border-color: #2563EB;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.08);
+  }
+  .lib-search svg {
+    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    color: #9CA3AF;
+  }
+
+  .lib-actions { display: flex; align-items: center; gap: 8px; }
+  .icon-btn {
+    width: 38px; height: 38px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    color: #4B5563; transition: all 0.15s;
+  }
+  .icon-btn:hover { background: #F0EFEA; color: #1A1A1A; }
+
+  .lib-body { flex: 1; overflow-y: auto; padding: 32px 40px 64px; }
+
+  /* Hero / Section header */
+  .lib-section-head {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  .lib-title {
+    font-family: Georgia, "Noto Serif SC", serif;
+    font-size: 32px; font-weight: 600; color: #1A1A1A;
+    letter-spacing: 0.3px;
+  }
+  .lib-subtitle { color: #6B7280; font-size: 14px; margin-top: 4px; }
+  .view-toggle {
+    display: inline-flex; background: #FFFFFF; border: 1px solid #E8E8E5;
+    border-radius: 10px; padding: 3px; gap: 2px;
+  }
+  .view-toggle button {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 7px;
+    font-size: 13px; color: #6B7280; transition: all 0.15s;
+  }
+  .view-toggle button.active { background: #1A1A1A; color: #FFFFFF; }
+  .view-toggle button:not(.active):hover { color: #1A1A1A; }
+
+  /* Shelf (book cards grid) */
+  .shelf {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 28px;
+  }
+  .book-card {
+    position: relative;
+    width: 100%; height: 360px;
+    background: #FFFFFF;
+    border-radius: 14px;
+    overflow: hidden;
+    cursor: pointer;
+    box-shadow:
+      0 1px 2px rgba(0,0,0,0.04),
+      0 4px 12px rgba(0,0,0,0.05);
+    transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s;
+    border: 1px solid #ECECE6;
+    display: flex; flex-direction: column;
+  }
+  .book-card::before {
+    /* book spine */
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px;
+    background: rgba(0,0,0,0.35);
+    box-shadow: inset -1px 0 0 rgba(255,255,255,0.08);
+    z-index: 2;
+  }
+  .book-card:hover {
+    transform: translateY(-6px);
+    box-shadow:
+      0 4px 8px rgba(0,0,0,0.05),
+      0 16px 32px rgba(0,0,0,0.10);
+  }
+  .book-cover {
+    position: relative; height: 60%;
+    display: flex; flex-direction: column; justify-content: space-between;
+    padding: 22px 22px 22px 28px;
+    color: #F5F1EA;
+    overflow: hidden;
+  }
+  .book-cover::after {
+    /* subtle texture */
+    content: ""; position: absolute; inset: 0;
+    background:
+      radial-gradient(circle at 80% 0%, rgba(255,255,255,0.10), transparent 50%),
+      linear-gradient(180deg, rgba(0,0,0,0) 60%, rgba(0,0,0,0.18) 100%);
+    pointer-events: none;
+  }
+  .book-cover .cover-mark {
+    display: flex; align-items: center; gap: 8px;
+    font-family: Georgia, serif; font-size: 11px;
+    letter-spacing: 2px; text-transform: uppercase;
+    color: rgba(255,255,255,0.7);
+  }
+  .book-cover .cover-mark .dot { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.6); }
+  .book-cover .cover-title {
+    font-family: Georgia, "Noto Serif SC", serif;
+    font-size: 28px; font-weight: 600;
+    line-height: 1.15; letter-spacing: 0.3px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.15);
+    position: relative; z-index: 1;
+  }
+  .book-cover .cover-icon {
+    position: absolute; right: 18px; bottom: 18px;
+    width: 56px; height: 56px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.10);
+    border: 1px solid rgba(255,255,255,0.18);
+    display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(2px);
+    z-index: 1;
+  }
+  .book-cover .cover-icon svg { width: 28px; height: 28px; color: rgba(255,255,255,0.92); }
+
+  /* Cover themes */
+  .theme-tpr .book-cover { background: linear-gradient(135deg, #1E3A5F 0%, #2D5B8E 100%); }
+  .theme-ai .book-cover { background: linear-gradient(135deg, #4A2D6B 0%, #6B3FA0 100%); }
+  .theme-bp .book-cover { background: linear-gradient(135deg, #1B4332 0%, #2D6A4F 100%); }
+  .theme-cms .book-cover { background: linear-gradient(135deg, #B7542E 0%, #D77A4E 100%); }
+  .theme-other .book-cover { background: linear-gradient(135deg, #2A2A2A 0%, #4A4A4A 100%); }
+
+  /* Group header */
+  .shelf-group { margin-bottom: 40px; }
+  .shelf-group:last-child { margin-bottom: 0; }
+  .shelf-group-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 18px;
+  }
+  .shelf-group-title {
+    font-family: Georgia, "Noto Serif SC", serif;
+    font-size: 20px; font-weight: 600; color: #1A1A1A;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .shelf-group-title .count {
+    font-family: -apple-system, sans-serif;
+    font-size: 12px; font-weight: 500;
+    background: #F0EFEA; color: #6B7280;
+    padding: 2px 9px; border-radius: 10px;
+    letter-spacing: 0.3px;
+  }
+  .shelf-group-sub { font-size: 12px; color: #9CA3AF; }
+
+  /* Hidden cards (for show-more toggle) */
+  .book-card.hidden-card { display: none; }
+  .list-row.hidden-row { display: none; }
+
+  .book-meta {
+    flex: 1; padding: 16px 22px 18px 28px;
+    display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .book-desc {
+    font-size: 13px; color: #4B5563; line-height: 1.55;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .book-stats {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 12px; color: #6B7280; margin-top: 12px;
+  }
+  .book-stats .files { display: flex; align-items: center; gap: 5px; }
+  .book-stats .updated { display: flex; align-items: center; gap: 5px; }
+
+  /* List view (secondary) */
+  .shelf-list { display: none; }
+  .shelf-list.active { display: block; }
+  .shelf-cards.active { display: grid; }
+
+  .list-row {
+    display: grid; grid-template-columns: 60px 1fr 120px 140px 60px;
+    align-items: center; gap: 18px;
+    padding: 16px 20px; background: #FFFFFF;
+    border: 1px solid #ECECE6; border-radius: 10px; margin-bottom: 10px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .list-row:hover { background: #FBFAF5; border-color: #D8D8D2; transform: translateX(2px); }
+  .list-cover {
+    width: 48px; height: 56px; border-radius: 5px; position: relative;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.10), inset 0 0 0 1px rgba(255,255,255,0.1);
+  }
+  .list-cover::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    background: rgba(0,0,0,0.4);
+  }
+  .list-info .name { font-family: Georgia, "Noto Serif SC", serif; font-size: 17px; font-weight: 600; }
+  .list-info .desc { font-size: 13px; color: #6B7280; margin-top: 2px; }
+  .list-cell { font-size: 13px; color: #6B7280; display: flex; align-items: center; gap: 6px; }
+  .list-arrow { color: #9CA3AF; display: flex; justify-content: flex-end; }
+
+  /* ===================================================
+     PAGE 2 — BOOK READING
+     =================================================== */
+  .reader { display: flex; height: 100%; }
+
+  .reader-toc {
+    width: 280px; flex-shrink: 0;
+    background: #F5F3EE;
+    border-right: 1px solid #ECECE6;
+    display: flex; flex-direction: column;
+  }
+  .toc-head {
+    padding: 22px 22px 18px;
+    border-bottom: 1px solid #ECECE6;
+  }
+  .toc-back {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 13px; color: #6B7280; cursor: pointer;
+    padding: 4px 0 12px;
+    transition: color 0.15s;
+  }
+  .toc-back:hover { color: #2563EB; }
+  .toc-book-title {
+    font-family: Georgia, "Noto Serif SC", serif;
+    font-size: 20px; font-weight: 600; line-height: 1.3;
+    color: #1A1A1A;
+  }
+  .toc-book-meta {
+    font-size: 12px; color: #6B7280; margin-top: 4px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .toc-book-meta .dot { width: 3px; height: 3px; border-radius: 50%; background: #C0C0B8; }
+
+  .toc-body { flex: 1; overflow-y: auto; padding: 14px 14px 24px; }
+  .toc-chapter {
+    margin-bottom: 6px;
+  }
+  .toc-chapter-label {
+    font-size: 11px; font-weight: 600; color: #9CA3AF;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    padding: 12px 12px 6px;
+  }
+  .toc-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 12px; border-radius: 6px;
+    font-size: 14px; color: #4B5563;
+    cursor: pointer; transition: all 0.12s;
+    line-height: 1.4;
+  }
+  .toc-item .toc-marker {
+    width: 4px; height: 4px; border-radius: 50%; background: #C0C0B8;
+    flex-shrink: 0; transition: all 0.12s;
+  }
+  .toc-item:hover { color: #1A1A1A; background: #EDEBE4; }
+  .toc-item.active {
+    color: #2563EB; background: #E8EEFB; font-weight: 500;
+  }
+  .toc-item.active .toc-marker { background: #2563EB; transform: scale(1.4); }
+  .toc-item.sub { padding-left: 26px; font-size: 13.5px; }
+  .toc-item .toc-icon { color: #9CA3AF; flex-shrink: 0; }
+  .toc-item.active .toc-icon { color: #2563EB; }
+
+  .toc-foot {
+    border-top: 1px solid #ECECE6;
+    padding: 14px 22px;
+    font-size: 12px; color: #9CA3AF;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .toc-foot .kbd {
+    background: #FFFFFF; border: 1px solid #E8E8E5; border-radius: 4px;
+    padding: 1px 6px; font-size: 11px; font-family: "SF Mono", Menlo, monospace;
+    color: #6B7280;
+  }
+
+  .reader-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+  .reader-toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 32px;
+    border-bottom: 1px solid #ECECE6;
+    background: #FFFFFF;
+    flex-shrink: 0;
+  }
+  .breadcrumbs { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #6B7280; }
+  .breadcrumbs .crumb { padding: 2px 4px; border-radius: 4px; }
+  .breadcrumbs .crumb:hover { color: #1A1A1A; background: #F0EFEA; }
+  .breadcrumbs .crumb.current { color: #1A1A1A; font-weight: 500; }
+  .breadcrumbs .sep { color: #C0C0B8; }
+
+  .toolbar-right { display: flex; align-items: center; gap: 12px; }
+  .doc-search {
+    position: relative; width: 240px;
+  }
+  .doc-search input {
+    width: 100%; height: 32px; padding: 0 12px 0 32px;
+    background: #F5F3EE; border: 1px solid transparent;
+    border-radius: 8px; font-size: 13px; color: #1A1A1A;
+    transition: all 0.15s;
+  }
+  .doc-search input::placeholder { color: #9CA3AF; }
+  .doc-search input:focus {
+    outline: none; background: #FFFFFF; border-color: #2563EB;
+  }
+  .doc-search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #9CA3AF; }
+
+  .seg {
+    display: inline-flex; background: #F5F3EE; border-radius: 8px; padding: 3px; gap: 1px;
+  }
+  .seg button {
+    padding: 4px 12px; border-radius: 6px; font-size: 12.5px; color: #6B7280;
+    display: flex; align-items: center; gap: 5px;
+    transition: all 0.15s;
+  }
+  .seg button.active { background: #FFFFFF; color: #1A1A1A; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+
+  .reader-content {
+    flex: 1; overflow-y: auto;
+    background: #FAFAF7;
+  }
+  .reader-content-inner {
+    max-width: 860px; margin: 0 auto;
+    padding: 56px 64px 96px;
+  }
+
+  /* Markdown content styles */
+  .doc-body { font-size: 16px; line-height: 1.8; color: #2A2A2A; }
+  .doc-body h1 {
+    font-family: Georgia, "Noto Serif SC", serif;
+    font-size: 36px; font-weight: 600; color: #1A1A1A;
+    margin: 0 0 8px; line-height: 1.25;
+    letter-spacing: 0.2px;
+  }
+  .doc-body .doc-eyebrow {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 12px; color: #2563EB; font-weight: 500;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .doc-body .doc-eyebrow .pill {
+    background: #E8EEFB; color: #2563EB;
+    padding: 2px 8px; border-radius: 4px; font-size: 11px; letter-spacing: 0.5px;
+  }
+  .doc-body .doc-meta-line {
+    display: flex; align-items: center; gap: 14px;
+    font-size: 13px; color: #6B7280; margin-bottom: 36px; padding-bottom: 24px;
+    border-bottom: 1px solid #ECECE6;
+  }
+  .doc-body .doc-meta-line span { display: flex; align-items: center; gap: 5px; }
+  .doc-body h2 {
+    font-family: Georgia, "Noto Serif SC", serif;
+    font-size: 26px; font-weight: 600; color: #1A1A1A;
+    margin: 48px 0 14px; line-height: 1.3;
+    letter-spacing: 0.2px;
+  }
+  .doc-body h3 {
+    font-family: Georgia, "Noto Serif SC", serif;
+    font-size: 20px; font-weight: 600; color: #1A1A1A;
+    margin: 32px 0 12px;
+  }
+  .doc-body p { margin: 0 0 18px; }
+  .doc-body strong { color: #1A1A1A; font-weight: 600; }
+  .doc-body a { color: #2563EB; border-bottom: 1px solid rgba(37,99,235,0.3); transition: border-color 0.15s; }
+  .doc-body a:hover { border-bottom-color: #2563EB; }
+  .doc-body ul, .doc-body ol { margin: 0 0 18px; padding-left: 26px; }
+  .doc-body li { margin: 6px 0; }
+  .doc-body blockquote {
+    border-left: 3px solid #2563EB; background: #F0F4FB;
+    padding: 14px 18px; margin: 20px 0; border-radius: 0 8px 8px 0;
+    color: #4B5563; font-style: italic;
+  }
+  .doc-body blockquote p:last-child { margin-bottom: 0; }
+  .doc-body code {
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 14px;
+    background: #F0EFEA; padding: 1px 6px; border-radius: 4px;
+    color: #B7542E;
+  }
+  .doc-body pre {
+    background: #F5F3EE; border: 1px solid #ECECE6;
+    border-radius: 10px; padding: 16px 20px; overflow-x: auto;
+    margin: 20px 0;
+  }
+  .doc-body pre code {
+    background: transparent; padding: 0; color: #1A1A1A; font-size: 13.5px; line-height: 1.7;
+  }
+  .doc-body table {
+    width: 100%; border-collapse: separate; border-spacing: 0;
+    margin: 20px 0; font-size: 14px;
+    border: 1px solid #ECECE6; border-radius: 8px; overflow: hidden;
+  }
+  .doc-body th, .doc-body td {
+    padding: 10px 14px; text-align: left;
+    border-bottom: 1px solid #ECECE6;
+  }
+  .doc-body th { background: #F5F3EE; font-weight: 600; color: #1A1A1A; }
+  .doc-body tr:last-child td { border-bottom: none; }
+  .doc-body tr:nth-child(even) td { background: #FBFAF5; }
+  .doc-body img {
+    max-width: 100%; border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    display: block; margin: 20px auto;
+  }
+  .doc-body hr {
+    border: none; border-top: 1px solid #ECECE6;
+    margin: 40px 0;
+  }
+  .doc-body .callout {
+    display: flex; gap: 12px;
+    background: #FBF7EE; border: 1px solid #EDE4D0;
+    border-radius: 10px; padding: 14px 16px; margin: 20px 0;
+  }
+  .doc-body .callout .callout-icon { color: #B7542E; flex-shrink: 0; margin-top: 2px; }
+  .doc-body .callout .callout-body { font-size: 14.5px; color: #4B5563; line-height: 1.65; }
+  .doc-body .callout .callout-body strong { color: #1A1A1A; }
+
+  /* File-type viewer placeholders */
+  .file-viewer {
+    background: #FFFFFF; border: 1px solid #ECECE6;
+    border-radius: 12px; overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+  }
+  .file-viewer-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 18px; background: #F5F3EE; border-bottom: 1px solid #ECECE6;
+  }
+  .file-viewer-head .file-name { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 500; }
+  .file-viewer-head .file-actions { display: flex; gap: 6px; }
+  .file-viewer-body {
+    height: 620px; position: relative;
+    background: #FFFFFF;
+    overflow: hidden;
+  }
+
+  /* PDF placeholder */
+  .pdf-page {
+    width: 80%; max-width: 540px; margin: 30px auto;
+    background: #FFFFFF;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    padding: 40px 48px; min-height: 700px;
+    position: relative;
+  }
+  .pdf-page::before {
+    content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, #1E3A5F, #2D5B8E);
+  }
+  .pdf-doc-title {
+    font-family: Georgia, serif; font-size: 22px; font-weight: 600;
+    color: #1A1A1A; margin-bottom: 6px;
+  }
+  .pdf-doc-sub { font-size: 12px; color: #6B7280; margin-bottom: 28px; padding-bottom: 14px; border-bottom: 1px solid #ECECE6; }
+  .pdf-line { height: 9px; background: #ECECE6; border-radius: 2px; margin: 9px 0; }
+  .pdf-line.short { width: 60%; }
+  .pdf-line.med { width: 82%; }
+  .pdf-line.long { width: 96%; }
+  .pdf-h2 { height: 14px; background: #C8C8C0; border-radius: 3px; margin: 24px 0 12px; width: 45%; }
+  .pdf-h3 { height: 11px; background: #D0D0C8; border-radius: 2px; margin: 18px 0 10px; width: 35%; }
+
+  /* DOCX placeholder */
+  .docx-page {
+    width: 86%; max-width: 600px; margin: 24px auto;
+    background: #FFFFFF; padding: 40px 50px;
+    min-height: 660px; box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+
+  /* PPTX placeholder */
+  .pptx-stage {
+    background: #2A2A2A; height: 100%; display: flex; align-items: center; justify-content: center;
+    padding: 30px;
+  }
+  .pptx-slide {
+    width: 78%; max-width: 720px; aspect-ratio: 16/9;
+    background: #FFFFFF; border-radius: 4px; box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+    padding: 36px 44px; position: relative;
+  }
+  .pptx-slide::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 6px;
+    background: linear-gradient(180deg, #B7542E, #D77A4E);
+    border-radius: 4px 0 0 4px;
+  }
+  .pptx-slide-num { position: absolute; bottom: 14px; right: 20px; font-size: 11px; color: #9CA3AF; }
+  .pptx-slide h2 { font-family: Georgia, serif; font-size: 28px; color: #1A1A1A; margin-bottom: 18px; }
+  .pptx-slide p { font-size: 14px; color: #4B5563; line-height: 1.7; margin: 10px 0; }
+  .pptx-slide ul { padding-left: 22px; color: #4B5563; font-size: 14px; }
+  .pptx-slide li { margin: 6px 0; }
+  .pptx-controls { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; align-items: center; color: #FFFFFF; font-size: 12px; }
+  .pptx-controls button { color: #FFFFFF; padding: 6px; }
+
+  /* Image viewer */
+  .img-stage {
+    height: 100%; display: flex; align-items: center; justify-content: center;
+    background: #1A1A1A; padding: 40px;
+  }
+  .img-stage .img-box {
+    max-width: 80%; max-height: 100%;
+    background: linear-gradient(135deg, #2D5B8E 0%, #4A78B0 100%);
+    border-radius: 8px; aspect-ratio: 16/10;
+    display: flex; align-items: center; justify-content: center;
+    color: rgba(255,255,255,0.7); font-size: 14px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+  }
+
+  /* Floating outline button */
+  .floating-btn {
+    position: fixed; right: 32px; bottom: 32px;
+    width: 48px; height: 48px; border-radius: 50%;
+    background: #FFFFFF; box-shadow: 0 4px 16px rgba(0,0,0,0.12), 0 0 0 1px #ECECE6;
+    display: flex; align-items: center; justify-content: center;
+    color: #4B5563; z-index: 50;
+    transition: all 0.18s;
+  }
+  .floating-btn:hover { color: #2563EB; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
+
+  /* Outline panel (right side TOC) */
+  .outline-panel {
+    position: fixed; top: 0; right: 0; bottom: 0; width: 300px;
+    background: #FFFFFF; box-shadow: -8px 0 24px rgba(0,0,0,0.08);
+    z-index: 100; transform: translateX(100%); transition: transform 0.25s ease;
+    display: flex; flex-direction: column;
+  }
+  .outline-panel.open { transform: translateX(0); }
+  .outline-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 22px; border-bottom: 1px solid #ECECE6;
+  }
+  .outline-title { font-family: Georgia, serif; font-size: 16px; font-weight: 600; }
+  .outline-body { flex: 1; overflow-y: auto; padding: 16px 22px; }
+  .outline-item {
+    display: block; padding: 6px 0; font-size: 13.5px; color: #4B5563;
+    cursor: pointer; border-left: 2px solid transparent; padding-left: 12px; margin-left: -12px;
+    line-height: 1.5; transition: all 0.12s;
+  }
+  .outline-item:hover { color: #1A1A1A; border-left-color: #C0C0B8; }
+  .outline-item.h3 { padding-left: 26px; margin-left: -12px; font-size: 13px; color: #6B7280; }
+  .outline-item.h2 { font-weight: 500; color: #1A1A1A; }
+
+  /* ===================================================
+     PAGE 3 — SEARCH RESULTS
+     =================================================== */
+  .search-page { padding: 0; }
+  .search-topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 40px;
+    border-bottom: 1px solid #ECECE6;
+    background: rgba(250,250,247,0.92);
+    backdrop-filter: blur(8px);
+  }
+  .search-topbar .brand-name { font-size: 18px; }
+
+  .search-hero {
+    padding: 56px 40px 32px; text-align: center;
+    background:
+      linear-gradient(180deg, #FAFAF7 0%, #FAFAF7 100%);
+  }
+  .search-hero .lead {
+    font-family: Georgia, serif; font-size: 13px; color: #6B7280;
+    letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px;
+  }
+  .search-hero .query {
+    font-family: Georgia, "Noto Serif SC", serif;
+    font-size: 34px; color: #1A1A1A; font-weight: 600; margin-bottom: 28px;
+    line-height: 1.3;
+  }
+  .search-hero .query em { color: #2563EB; font-style: normal; border-bottom: 2px solid #2563EB; padding-bottom: 2px; }
+  .search-bar-big {
+    max-width: 640px; margin: 0 auto; position: relative;
+  }
+  .search-bar-big input {
+    width: 100%; height: 50px; padding: 0 18px 0 48px;
+    background: #FFFFFF; border: 1px solid #E8E8E5;
+    border-radius: 12px; font-size: 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+    transition: all 0.15s;
+  }
+  .search-bar-big input:focus {
+    outline: none; border-color: #2563EB;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.10);
+  }
+  .search-bar-big svg { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: #6B7280; }
+  .search-bar-big .kbd-hint {
+    position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+    display: flex; gap: 4px;
+  }
+  .kbd {
+    background: #F5F3EE; border: 1px solid #E8E8E5; border-radius: 4px;
+    padding: 2px 6px; font-size: 11px; font-family: "SF Mono", Menlo, monospace;
+    color: #6B7280;
+  }
+
+  .search-results {
+    max-width: 820px; margin: 24px auto 80px; padding: 0 40px;
+  }
+  .result-group { margin-bottom: 36px; }
+  .result-group-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .result-group-title {
+    font-family: Georgia, serif; font-size: 13px; color: #6B7280;
+    letter-spacing: 1.5px; text-transform: uppercase; font-weight: 500;
+  }
+  .result-group-count { font-size: 12px; color: #9CA3AF; }
+
+  .result-card {
+    display: block;
+    background: #FFFFFF; border: 1px solid #ECECE6;
+    border-radius: 12px; padding: 18px 22px; margin-bottom: 10px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .result-card:hover {
+    border-color: #C8C8C0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    transform: translateX(2px);
+  }
+  .result-head {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; color: #6B7280; margin-bottom: 6px;
+  }
+  .result-head .badge {
+    background: #F0EFEA; color: #4B5563;
+    padding: 1px 8px; border-radius: 4px; font-size: 11px;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .result-title {
+    font-family: Georgia, "Noto Serif SC", serif;
+    font-size: 18px; font-weight: 600; color: #1A1A1A; margin-bottom: 4px;
+  }
+  .result-path {
+    font-size: 12px; color: #9CA3AF; font-family: "SF Mono", Menlo, monospace;
+    margin-bottom: 8px;
+  }
+  .result-snippet {
+    font-size: 14px; color: #4B5563; line-height: 1.65;
+  }
+  .result-snippet mark {
+    background: #FFF3CC; color: #1A1A1A; padding: 1px 3px; border-radius: 2px;
+    font-weight: 500;
+  }
+
+  /* utility */
+  .hidden { display: none !important; }
+
+  /* Settings modal */
+  .settings-modal {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 2000;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .settings-modal.active { opacity: 1; pointer-events: auto; }
+  .settings-content {
+    background: #FFFFFF;
+    border-radius: 16px;
+    width: 90%; max-width: 480px;
+    padding: 32px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  }
+  .settings-title {
+    font-family: Georgia, serif;
+    font-size: 22px; font-weight: 600;
+    color: #1A1A1A;
+    margin-bottom: 24px;
+  }
+  .settings-field {
+    margin-bottom: 20px;
+  }
+  .settings-label {
+    display: block;
+    font-size: 13px; font-weight: 600;
+    color: #4B5563;
+    margin-bottom: 8px;
+  }
+  .settings-input {
+    width: 100%;
+    height: 42px;
+    padding: 0 14px;
+    background: #FAFAF7;
+    border: 1px solid #ECECE6;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.15s;
+  }
+  .settings-input:focus {
+    outline: none;
+    border-color: #2563EB;
+    background: #FFFFFF;
+  }
+  .settings-actions {
+    display: flex; justify-content: flex-end; gap: 10px;
+    margin-top: 28px;
+  }
+  .btn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px; font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-secondary {
+    background: #F5F3EE;
+    color: #4B5563;
+  }
+  .btn-secondary:hover { background: #EDEBE4; }
+  .btn-primary {
+    background: #1A1A1A;
+    color: #FFFFFF;
+  }
+  .btn-primary:hover { background: #2A2A2A; }
+
+  /* Loading spinner */
+  .spinner {
+    display: inline-block;
+    width: 20px; height: 20px;
+    border: 2px solid #ECECE6;
+    border-top-color: #2563EB;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Error message */
+  .error-message {
+    background: #FEF2F2;
+    border: 1px solid #FECACA;
+    color: #DC2626;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+
+  /* Loading overlay */
+  .loading-overlay {
+    position: absolute; inset: 0;
+    background: rgba(250,250,247,0.9);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 10;
+  }
+  .loading-overlay .spinner {
+    width: 32px; height: 32px;
+    margin-bottom: 12px;
+  }
+  .loading-text {
+    font-size: 14px; color: #6B7280;
+  }
+
+  /* =================== Mobile Responsive =================== */
+  @media (max-width: 768px) {
+    .lib-topbar { padding: 0 12px; height: 52px; }
+    .brand-name { font-size: 15px; }
+    .brand-name .accent { display: none; }
+    .brand-mark { width: 28px; height: 28px; font-size: 14px; }
+    .lib-search { width: 140px; }
+    .lib-search input { font-size: 14px; }
+    .lib-actions .icon-btn { width: 32px; height: 32px; }
+    .lib-actions [style*="32px"] { width: 28px; height: 28px; font-size: 12px; }
+
+    .lib-body { padding: 16px 12px; }
+    .lib-title { font-size: 22px; }
+    .lib-subtitle { font-size: 12px; }
+    .shelf-group-title { font-size: 16px; }
+    .shelf-group-sub { font-size: 11px; }
+
+    /* 书卡变成单列，缩小 */
+    .shelf shelf, .shelf[data-cards] {
+      grid-template-columns: repeat(2, 1fr) !important;
+      gap: 10px !important;
+    }
+    .book-card { min-height: 160px !important; }
+    .book-cover { min-height: 80px !important; padding: 12px !important; }
+    .book-cover-title { font-size: 13px !important; }
+    .book-cover-icon { font-size: 24px !important; margin-bottom: 4px !important; }
+    .book-info { padding: 8px 10px !important; }
+    .book-desc { font-size: 12px !important; -webkit-line-clamp: 2; }
+    .book-meta { font-size: 10px !important; }
+
+    /* 列表视图 */
+    .list-row { grid-template-columns: 1fr !important; gap: 2px; padding: 10px 12px !important; }
+    .list-row-desc { display: none; }
+    .list-row-name { font-size: 14px; }
+    .list-row-meta { font-size: 11px; }
+
+    /* 阅读页 */
+    .reader { flex-direction: column !important; }
+    .reader-toc {
+      width: 100% !important;
+      max-height: 35vh;
+      border-right: none !important;
+      border-bottom: 1px solid #E8E8E5;
+    }
+    .reader-content { width: 100% !important; }
+    .reader-content-inner { padding: 16px !important; }
+    .doc-body { font-size: 15px !important; line-height: 1.75 !important; }
+    .doc-body h1 { font-size: 22px !important; }
+    .doc-body h2 { font-size: 18px !important; }
+    .doc-body h3 { font-size: 16px !important; }
+
+    /* 设置弹窗 */
+    .settings-modal { width: 92% !important; padding: 20px !important; }
+    .settings-modal h3 { font-size: 16px; }
+    .settings-input { font-size: 14px; padding: 8px 10px; }
+
+    /* TOC */
+    .toc-book-title { font-size: 15px; }
+    .toc-chapter-label { font-size: 12px; }
+    .toc-item { font-size: 13px; padding: 5px 0; }
+
+    /* 搜索页 */
+    .search-page-content { padding: 20px 16px; }
+    .search-input-large { font-size: 16px; }
+    .result-item { padding: 14px 0; }
+    .result-title { font-size: 15px; }
+    .result-snippet { font-size: 13px; }
+  }
+
+  /* 非常小的屏幕 */
+  @media (max-width: 400px) {
+    .shelf shelf, .shelf[data-cards] {
+      grid-template-columns: 1fr !important;
+    }
+    .lib-search { width: 100px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- Settings Modal -->
+<div class="settings-modal" id="settingsModal">
+  <div class="settings-content">
+    <h2 class="settings-title">知识库设置</h2>
+    <div id="settingsError" class="error-message hidden"></div>
+    <div class="settings-field">
+      <label class="settings-label">AppKey</label>
+      <input type="text" class="settings-input" id="appKeyInput" placeholder="请输入 AppKey" />
+    </div>
+    <div class="settings-field">
+      <label class="settings-label">服务器地址</label>
+      <input type="text" class="settings-input" id="serverUrlInput" placeholder="https://..." />
+    </div>
+    <div class="settings-actions">
+      <button class="btn btn-secondary" id="settingsCancel">取消</button>
+      <button class="btn btn-primary" id="settingsSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================================
+     PAGE 1 — LIBRARY
+     ========================================================= -->
+<section class="page active" id="page-library">
+  <header class="lib-topbar">
+    <div class="brand">
+      <div class="brand-mark">玄</div>
+      <div class="brand-name">玄关知识库 <span class="accent serif">/ XGK Library</span></div>
+    </div>
+    <div class="lib-search">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input type="text" id="libSearch" placeholder="搜索项目或文档..." />
+    </div>
+    <div class="lib-actions">
+      <button class="icon-btn" title="新建">
+        <svg class="icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+      <button class="icon-btn" title="通知">
+        <svg class="icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+      </button>
+      <button class="icon-btn" title="设置">
+        <svg class="icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+      <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#2563EB,#7C3AED);color:#FFFFFF;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;margin-left:6px;">E</div>
+    </div>
+  </header>
+
+  <main class="lib-body" style="position:relative;">
+    <div id="libraryLoading" class="loading-overlay hidden">
+      <div class="spinner"></div>
+      <div class="loading-text">正在加载项目...</div>
+    </div>
+    <div id="libraryError" class="error-message hidden" style="margin:20px 40px;"></div>
+    <div class="lib-section-head">
+      <div>
+        <h1 class="lib-title">我的书架</h1>
+        <div class="lib-subtitle">共 49 个项目 · 16 个 TPR 项目 + 33 个业务项目 · 最近更新于今天</div>
+      </div>
+      <div class="view-toggle" id="viewToggle">
+        <button class="active" data-view="cards">
+          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          书架
+        </button>
+        <button data-view="list">
+          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          列表
+        </button>
+      </div>
+    </div>
+
+    <!-- Cards (bookshelf) view -->
+    <div class="shelf shelf-cards active" id="shelfCards">
+      <!-- Group 1: TPR Projects -->
+      <div class="shelf-group" data-group="tpr">
+        <div class="shelf-group-head">
+          <div class="shelf-group-title">TPR 项目 <span class="count">16</span></div>
+          <div class="shelf-group-sub">Think / Probe / Review · 标准化项目模板</div>
+        </div>
+        <div class="shelf" data-cards></div>
+        <div class="show-more-row" style="text-align:center;margin-top:16px;"></div>
+      </div>
+
+      <!-- Group 2: Business Projects -->
+      <div class="shelf-group" data-group="biz">
+        <div class="shelf-group-head">
+          <div class="shelf-group-title">业务项目 <span class="count">33</span></div>
+          <div class="shelf-group-sub">AI · BP · CMS · 其他</div>
+        </div>
+        <div class="shelf" data-cards></div>
+        <div class="show-more-row" style="text-align:center;margin-top:16px;"></div>
+      </div>
+    </div>
+
+    <!-- List view -->
+    <div class="shelf-list" id="shelfList">
+      <div class="shelf-group" data-group-list="tpr">
+        <div class="shelf-group-head">
+          <div class="shelf-group-title">TPR 项目 <span class="count">16</span></div>
+          <div class="shelf-group-sub">Think / Probe / Review · 标准化项目模板</div>
+        </div>
+        <div data-rows></div>
+      </div>
+      <div class="shelf-group" data-group-list="biz" style="margin-top:40px;">
+        <div class="shelf-group-head">
+          <div class="shelf-group-title">业务项目 <span class="count">33</span></div>
+          <div class="shelf-group-sub">AI · BP · CMS · 其他</div>
+        </div>
+        <div data-rows></div>
+      </div>
+    </div>
+  </main>
+</section>
+
+
+<!-- =========================================================
+     PAGE 2 — READER
+     ========================================================= -->
+<section class="page" id="page-reader">
+  <div class="reader">
+    <!-- TOC -->
+    <aside class="reader-toc">
+      <div class="toc-head">
+        <div class="toc-back" id="backToLibrary">
+          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+          返回书架
+        </div>
+        <div class="toc-book-title" id="tocBookTitle">TPR-20260618-001</div>
+        <div class="toc-book-meta">
+          <span>TPR 项目</span><span class="dot"></span>
+          <span id="tocDocCount">12 个文档</span>
+        </div>
+      </div>
+      <div class="toc-body" id="tocBody">
+        <div class="toc-chapter">
+          <div class="toc-chapter-label">📖 项目主索引</div>
+          <div class="toc-item active" data-doc="pidx">
+            <span class="toc-marker"></span>
+            <svg class="icon-sm toc-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+            P-IDX-01_项目主索引.md
+          </div>
+        </div>
+        <div class="toc-chapter">
+          <div class="toc-chapter-label">01 · Discovery</div>
+          <div class="toc-item sub" data-doc="discovery">
+            <span class="toc-marker"></span>
+            <svg class="icon-sm toc-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+            DISCOVERY.md
+          </div>
+          <div class="toc-item sub" data-doc="docs-deploy-plan">
+            <span class="toc-marker"></span>
+            <svg class="icon-sm toc-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+            docs-deploy-plan.md
+          </div>
+        </div>
+        <div class="toc-chapter">
+          <div class="toc-chapter-label">02 · Battle（评审记录）</div>
+          <div class="toc-item sub" data-doc="battle-docs">
+            <span class="toc-marker"></span>
+            <svg class="icon-sm toc-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+            docs-deploy-plan-CONDITIONAL_PASS.md
+          </div>
+          <div class="toc-item sub" data-doc="battle-file">
+            <span class="toc-marker"></span>
+            <svg class="icon-sm toc-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+            file-browser-interaction-CONDITIONAL_PASS.md
+          </div>
+        </div>
+        <div class="toc-chapter">
+          <div class="toc-chapter-label">05 · Closure</div>
+          <div class="toc-item sub" data-doc="closure">
+            <span class="toc-marker"></span>
+            <svg class="icon-sm toc-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+            P-ACPT-01.md
+          </div>
+        </div>
+        <div class="toc-chapter">
+          <div class="toc-chapter-label">03 · Src（源码与脚本）</div>
+          <div class="toc-item sub" data-doc="deploy">
+            <span class="toc-marker"></span>
+            <svg class="icon-sm toc-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H66a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+            deploy.sh
+          </div>
+        </div>
+      </div>
+      <div class="toc-foot">
+        <span>按 <span class="kbd">⌘K</span> 搜索</span>
+        <span>23 / 23</span>
+      </div>
+    </aside>
+
+    <!-- Main reading area -->
+    <main class="reader-main">
+      <div class="reader-toolbar">
+        <div class="breadcrumbs">
+          <span class="crumb" id="bcHome">玄关知识库</span>
+          <span class="sep">/</span>
+          <span class="crumb">TPR方法论</span>
+          <span class="sep">/</span>
+          <span class="crumb current" id="bcDoc">README.md</span>
+        </div>
+        <div class="toolbar-right">
+          <div class="doc-search">
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            <input type="text" placeholder="在此文档中搜索…" />
+          </div>
+          <div class="seg">
+            <button class="active">
+              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+              阅读
+            </button>
+            <button>
+              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+              预览
+            </button>
+            <button>
+              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 19 7-7 3 3-7 7-3-3z"/><path d="m18 13-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="m2 2 7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+              编辑
+            </button>
+          </div>
+          <button class="icon-btn" title="分享">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          </button>
+          <button class="icon-btn" title="更多">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="reader-content" id="readerContent">
+        <div class="reader-content-inner">
+          <div class="doc-body" id="docBody">
+            <!-- default: README.md rendered -->
+            <div class="doc-eyebrow"><span class="pill">README</span> · 序言</div>
+            <h1>TPR 工作方法论</h1>
+            <p style="font-size:18px;color:#4B5563;font-style:italic;line-height:1.7;margin-bottom:32px;">
+              Think / Probe / Review —— 一套用于复杂方案规划与高质量交付的认知工作框架。
+            </p>
+            <div class="doc-meta-line">
+              <span>
+                <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                evan.zhao
+              </span>
+              <span>
+                <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                更新于 2026-06-21
+              </span>
+              <span>
+                <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                阅读约 12 分钟
+              </span>
+            </div>
+
+            <h2 id="sec-overview">一、什么是 TPR？</h2>
+            <p>
+              <strong>TPR</strong> 是 <em>Think · Probe · Review</em> 三个阶段的组合，是我们在面对复杂问题时形成的一套工作方法论。它强调在动手前充分思考，在执行中持续探测，在交付前严格复盘。
+            </p>
+            <p>
+              与传统的"先做再改"不同，TPR 把认知工作提到流程前端，把验证环节内嵌到执行过程，把复盘沉淀为可复用的资产。
+            </p>
+
+            <blockquote>
+              "复杂问题不是被解决的，是被理解的。" —— 玄关团队内部共识
+            </blockquote>
+
+            <h2 id="sec-three-stages">二、三个阶段</h2>
+
+            <h3>Think（思考）</h3>
+            <p>
+              在这个阶段，我们尽可能推迟对解决方案的承诺，而是先理解问题本身。核心活动包括：
+            </p>
+            <ul>
+              <li><strong>明确问题边界</strong>：哪些是核心问题，哪些是衍生问题</li>
+              <li><strong>识别约束条件</strong>：技术、资源、时间、合规等</li>
+              <li><strong>枚举可能路径</strong>：不评价，先穷举</li>
+              <li><strong>形成判断假设</strong>：选择一个方向作为后续探测的目标</li>
+            </ul>
+
+            <h3>Probe（探测）</h3>
+            <p>
+              用最小成本验证假设。常见手法：
+            </p>
+            <ol>
+              <li>做一个能跑的最简原型</li>
+              <li>用真实数据驱动一次端到端流程</li>
+              <li>邀请 1–2 个利益相关方试运行</li>
+              <li>记录"我们以为对"但其实不对的点</li>
+            </ol>
+
+            <h3>Review（复盘）</h3>
+            <p>
+              把过程中的发现沉淀为结构化资产——文档、模板、检查清单、决策记录。
+            </p>
+
+            <div class="callout">
+              <div class="callout-icon">
+                <svg class="icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/><circle cx="12" cy="12" r="4"/></svg>
+              </div>
+              <div class="callout-body">
+                <strong>关键原则：</strong>三个阶段不是线性的瀑布，而是一个螺旋。Think 后可以 Probe，Probe 后可以重新 Think，Review 后又触发新的 Think。
+              </div>
+            </div>
+
+            <h2 id="sec-when">三、什么时候用 TPR？</h2>
+            <p>TPR 适用于以下场景：</p>
+            <ul>
+              <li>首次面对一个未知领域，需要快速建立认知地图</li>
+              <li>方案涉及多个利益相关方，需要共识</li>
+              <li>改动会影响现有系统的关键路径</li>
+              <li>团队在历史项目中反复踩同样的坑</li>
+            </ul>
+            <p>不适用于：纯执行性的、路径已经清晰的任务。</p>
+
+            <h2 id="sec-artifacts">四、关键产物</h2>
+            <table>
+              <thead>
+                <tr><th>阶段</th><th>关键产物</th><th>沉淀位置</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Think</td><td>问题陈述、约束清单、备选方案</td><td><code>/设计文档/</code></td></tr>
+                <tr><td>Probe</td><td>原型、数据记录、用户反馈</td><td><code>/参考资料/</code></td></tr>
+                <tr><td>Review</td><td>复盘报告、检查清单、模板</td><td><code>/脚本工具/</code></td></tr>
+              </tbody>
+            </table>
+
+            <h2 id="sec-next">五、下一步</h2>
+            <p>推荐阅读顺序：</p>
+            <ol>
+              <li>《<a href="#">架构设计</a>》—— 理解 TPR 在工程层面的落地</li>
+              <li>《<a href="#">最佳实践</a>》—— 五个真实项目的复盘</li>
+              <li>《<a href="#">玄关开放平台 API</a>》—— 技术参考</li>
+            </ol>
+
+            <hr>
+
+            <p style="color:#9CA3AF;font-size:14px;text-align:center;">
+              — 文档持续更新中。如有疑问，在右下角点击反馈按钮 —
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <button class="floating-btn" id="outlineBtn" title="文档大纲">
+        <svg class="icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      </button>
+
+      <!-- Outline panel -->
+      <aside class="outline-panel" id="outlinePanel">
+        <div class="outline-head">
+          <div class="outline-title">本文大纲</div>
+          <button class="icon-btn" id="closeOutline">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="outline-body">
+          <a class="outline-item h2" href="#sec-overview">一、什么是 TPR？</a>
+          <a class="outline-item h2" href="#sec-three-stages">二、三个阶段</a>
+          <a class="outline-item h3" href="#">Think（思考）</a>
+          <a class="outline-item h3" href="#">Probe（探测）</a>
+          <a class="outline-item h3" href="#">Review（复盘）</a>
+          <a class="outline-item h2" href="#sec-when">三、什么时候用 TPR？</a>
+          <a class="outline-item h2" href="#sec-artifacts">四、关键产物</a>
+          <a class="outline-item h2" href="#sec-next">五、下一步</a>
+        </div>
+      </aside>
+    </main>
+  </div>
+</section>
+
+
+<!-- =========================================================
+     PAGE 3 — SEARCH RESULTS
+     ========================================================= -->
+<section class="page search-page" id="page-search">
+  <header class="search-topbar">
+    <div class="brand">
+      <div class="brand-mark">玄</div>
+      <div class="brand-name">玄关知识库</div>
+    </div>
+    <div class="lib-actions">
+      <button class="icon-btn" id="searchBack" title="返回书架">
+        <svg class="icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+      </button>
+      <button class="icon-btn" title="设置">
+        <svg class="icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="search-hero">
+    <div class="lead">搜索结果</div>
+    <div class="query">关于 <em>"Think Probe Review"</em> 的 12 条结果</div>
+    <div class="search-bar-big">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input type="text" value="Think Probe Review" />
+      <div class="kbd-hint">
+        <span class="kbd">⌘</span><span class="kbd">K</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="search-results">
+
+    <!-- Group 1: Documents -->
+    <div class="result-group">
+      <div class="result-group-head">
+        <div class="result-group-title">文档</div>
+        <div class="result-group-count">4 条</div>
+      </div>
+
+      <a class="result-card">
+        <div class="result-head">
+          <span class="badge">
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+            TPR方法论 / README.md
+          </span>
+          <span>2026-06-21</span>
+        </div>
+        <div class="result-title">TPR 工作方法论</div>
+        <div class="result-path">/TPR方法论/README.md</div>
+        <div class="result-snippet">
+          <strong>TPR</strong> 是 <mark>Think</mark> · <mark>Probe</mark> · <mark>Review</mark> 三个阶段的组合，是我们在面对复杂问题时形成的一套工作方法论。它强调在动手前充分思考，在执行中持续探测，在交付前严格复盘。
+        </div>
+      </a>
+
+      <a class="result-card">
+        <div class="result-head">
+          <span class="badge">
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+            TPR方法论 / 最佳实践.md
+          </span>
+          <span>2026-05-30</span>
+        </div>
+        <div class="result-title">最佳实践：五个项目的 TPR 复盘</div>
+        <div class="result-path">/TPR方法论/参考资料/最佳实践.md</div>
+        <div class="result-snippet">
+          本文整理了过去一年中五个运用 <mark>TPR</mark> 框架完成的代表性项目，提取其中的可复用模式与常见陷阱。每个案例都包含 <mark>Think</mark> 阶段的问题陈述、<mark>Probe</mark> 阶段的验证记录，以及 <mark>Review</mark> 阶段的沉淀。
+        </div>
+      </a>
+    </div>
+
+    <!-- Group 2: Paragraph hits -->
+    <div class="result-group">
+      <div class="result-group-head">
+        <div class="result-group-title">段落命中</div>
+        <div class="result-group-count">6 条</div>
+      </div>
+
+      <a class="result-card">
+        <div class="result-head">
+          <span class="badge">
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+            TPR方法论 / 架构设计.md
+          </span>
+          <span>段落 #42</span>
+        </div>
+        <div class="result-title">…三个阶段不是线性的瀑布…</div>
+        <div class="result-path">/TPR方法论/设计文档/架构设计.md</div>
+        <div class="result-snippet">
+          <mark>Think</mark> 后可以 <mark>Probe</mark>，<mark>Probe</mark> 后可以重新 <mark>Think</mark>，<mark>Review</mark> 后又触发新的 <mark>Think</mark>。在系统设计中，这意味着 <mark>Probe</mark> 阶段的失败信号应当回流到 <mark>Think</mark> 阶段…
+        </div>
+      </a>
+
+      <a class="result-card">
+        <div class="result-head">
+          <span class="badge">
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+            NoteX / BP审计方案.md
+          </span>
+          <span>段落 #18</span>
+        </div>
+        <div class="result-title">…BP 审计中如何应用 TPR…</div>
+        <div class="result-path">/NoteX/业务知识/BP审计方案.md</div>
+        <div class="result-snippet">
+          在 BP（商业计划书）审计场景下，<mark>Think</mark> 阶段对应"理解项目方真实诉求"，<mark>Probe</mark> 阶段对应"用尽调清单验证关键假设"，<mark>Review</mark> 阶段则把审计经验沉淀为可复用的检查清单。
+        </div>
+      </a>
+
+      <a class="result-card">
+        <div class="result-head">
+          <span class="badge">
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+            TPR方法论 / API 规范.md
+          </span>
+          <span>段落 #07</span>
+        </div>
+        <div class="result-title">…Think 阶段的输出物规范…</div>
+        <div class="result-path">/TPR方法论/设计文档/API 规范.md</div>
+        <div class="result-snippet">
+          <mark>Think</mark> 阶段必须输出三份结构化文档：问题陈述、约束清单、备选方案评估表。三份文档均需在 <mark>Probe</mark> 启动前完成 review check，由独立评审人签字。
+        </div>
+      </a>
+    </div>
+
+    <!-- Group 3: Filename matches -->
+    <div class="result-group">
+      <div class="result-group-head">
+        <div class="result-group-title">文件名</div>
+        <div class="result-group-count">2 条</div>
+      </div>
+
+      <a class="result-card">
+        <div class="result-head">
+          <span class="badge">
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+            TPR方法论 / 监控配置.md
+          </span>
+          <span>.md</span>
+        </div>
+        <div class="result-title">监控配置.md</div>
+        <div class="result-path">/TPR方法论/脚本工具/监控配置.md</div>
+        <div class="result-snippet" style="color:#9CA3AF;">
+          文件名包含 "TPR" 缩写，关联项目：TPR方法论
+        </div>
+      </a>
+
+      <a class="result-card">
+        <div class="result-head">
+          <span class="badge">
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+            NoteX / TPR应用案例.md
+          </span>
+          <span>.md</span>
+        </div>
+        <div class="result-title">TPR应用案例.md</div>
+        <div class="result-path">/NoteX/方法论/TPR应用案例.md</div>
+        <div class="result-snippet" style="color:#9CA3AF;">
+          文件名直接匹配 "TPR" 关键词
+        </div>
+      </a>
+    </div>
+
+  </div>
+</section>
+
+</div><!-- /.app -->
+
+<script>
+  // =================== Configuration ===================
+  const DEFAULT_APP_KEY = 'TsFhRR7OywNULeHPqudePf85STc4EpHI';
+  const DEFAULT_SERVER_URL = '/xgkb-api/open-api/';
+
+  let APP_KEY = localStorage.getItem('xgkb_app_key') || DEFAULT_APP_KEY;
+  // 强制使用同源代理路径（忽略旧版 localStorage 中存的外部 URL）
+  let SERVER_URL = '/xgkb-api/open-api/';
+  let PROJECT_ID = null;
+
+  // =================== API Functions ===================
+  async function apiCall(endpoint, options = {}) {
+    const url = SERVER_URL + endpoint;
+    const headers = {
+      'appKey': APP_KEY,
+      ...options.headers
+    };
+    try {
+      const response = await fetch(url, { ...options, headers });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      const data = await response.json();
+      if (data.resultCode !== 1) {
+        throw new Error(data.resultMsg || 'API 请求失败');
+      }
+      return data.data;
+    } catch (error) {
+      console.error('API Error:', error);
+      throw error;
+    }
+  }
+
+  async function getProjectId() {
+    if (PROJECT_ID) return PROJECT_ID;
+    PROJECT_ID = await apiCall('document-database/project/personal/getProjectId');
+    return PROJECT_ID;
+  }
+
+  async function getLevel1Folders() {
+    const projectId = await getProjectId();
+    return apiCall(`document-database/file/getLevel1Folders?projectId=${projectId}`);
+  }
+
+  async function getChildFiles(parentId) {
+    return apiCall(`document-database/file/getChildFiles?parentId=${parentId}`);
+  }
+
+  async function getDownloadInfo(fileId, forceDownload = false) {
+    return apiCall(`document-database/file/getDownloadInfo?fileId=${fileId}&forceDownload=${forceDownload}`);
+  }
+
+  async function getFullFileContent(fileId) {
+    return apiCall(`document-database/file/getFullFileContent?fileId=${fileId}`);
+  }
+
+  // 用 appKey 换 access-token（doc-preview 需要）
+  async function getAccessToken(appKey) {
+    // user/login/appkey 走同源代理
+    const base = SERVER_URL.replace(/\/open-api\/?$/, '');
+    const resp = await fetch(`${base}/user/login/appkey?appCode=cms_gpt&appKey=${appKey}`);
+    const json = await resp.json();
+    if (json.resultCode === 1 && json.data && json.data.xgToken) {
+      return json.data.xgToken;
+    }
+    throw new Error('获取 access-token 失败');
+  }
+
+  // 调 doc-preview 服务获取公网预览链接
+  async function getDocPreviewUrl(fileId, fileName, suffix) {
+    const appKey = APP_KEY;
+    const accessToken = await getAccessToken(appKey);
+    // doc-preview 走同源代理
+    const base = SERVER_URL.replace(/\/open-api\/?$/, '');
+    const resp = await fetch(`${base}/doc-preview/api/preview/ticket`, {
+      method: 'POST',
+      headers: {
+        'access-token': accessToken,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        bizType: 'kb',
+        bizId: String(fileId),
+        format: suffix || 'md',
+        title: fileName || 'document',
+      }),
+    });
+    const json = await resp.json();
+    if (json.resultCode === 1 && json.data && json.data.previewUrl) {
+      return json.data.previewUrl;
+    }
+    throw new Error('获取预览链接失败: ' + (json.resultMsg || 'unknown'));
+  }
+
+  // =================== Theme & Colors ===================
+  const THEME_GRADIENTS = {
+    tpr: 'linear-gradient(135deg, #1E3A5F 0%, #2D5B8E 100%)',
+    ai:  'linear-gradient(135deg, #3D2C5E 0%, #5B3E8A 100%)',
+    bp:  'linear-gradient(135deg, #1B4332 0%, #2D6A4F 100%)',
+    cms: 'linear-gradient(135deg, #B7542E 0%, #D77A4E 100%)',
+    other: 'linear-gradient(135deg, #374151 0%, #4B5563 100%)',
+  };
+
+  const THEME_COLORS = {
+    tpr: '#2D5B8E', ai: '#5B3E8A', bp: '#2D6A4F', cms: '#D77A4E', other: '#6B7280',
+  };
+
+  const FILE_ICON_SVG = '<svg class="icon-sm toc-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>';
+
+  // =================== Project Loading ===================
+  let TPR_PROJECTS = [];
+  let BIZ_PROJECTS = [];
+
+  function getProjectTheme(name) {
+    if (name.startsWith('TPR-') || name === 'TPR流程规范' || name === 'TPR项目执行' || name === 'TPR') {
+      return 'tpr';
+    }
+    const lower = name.toLowerCase();
+    if (lower.includes('agent') || lower.includes('ai') || lower.includes('arch') || lower.includes('ontology')) {
+      return 'ai';
+    }
+    if (lower.includes('bp') || lower.includes('bd') || lower.includes('bonus') || lower.includes('vbp') ||
+        lower.includes('fina') || lower.includes('财务')) {
+      return 'bp';
+    }
+    if (lower.includes('cms') || lower.includes('docview') || lower.includes('knowledge')) {
+      return 'cms';
+    }
+    return 'other';
+  }
+
+  async function loadProjects() {
+    const loadingOverlay = document.getElementById('libraryLoading');
+    const errorDiv = document.getElementById('libraryError');
+
+    try {
+      loadingOverlay.classList.remove('hidden');
+      errorDiv.classList.add('hidden');
+
+      // 获取一级目录
+      const level1 = await getLevel1Folders();
+
+      // 找到 Obsidian 文件夹
+      const obsidianFolder = level1.find(item => item.name === 'Obsidian' && item.type === 1);
+      if (!obsidianFolder) {
+        throw new Error('未找到 Obsidian 文件夹');
+      }
+
+      // 获取 Obsidian 的子目录
+      const obsidianChildren = await getChildFiles(obsidianFolder.id);
+
+      // 找到 projects 文件夹
+      const projectsFolder = obsidianChildren.find(item => item.name === 'projects' && item.type === 1);
+      if (!projectsFolder) {
+        throw new Error('未找到 projects 文件夹');
+      }
+
+      // 获取所有项目文件夹
+      const allProjects = await getChildFiles(projectsFolder.id);
+
+      // 过滤出文件夹并分类
+      const tprProjects = [];
+      const bizProjects = [];
+
+      for (const project of allProjects) {
+        if (project.type !== 1) continue; // 只要文件夹
+
+        const theme = getProjectTheme(project.name);
+        const projectData = {
+          id: project.id,
+          name: project.name,
+          desc: project.name, // 暂时用名称作为描述
+          files: 0, // 稍后统计
+          date: project.createTimeStr || project.createTime ? formatDate(project.createTime) : '',
+          theme: theme
+        };
+
+        if (theme === 'tpr') {
+          tprProjects.push(projectData);
+        } else {
+          bizProjects.push(projectData);
+        }
+      }
+
+      // 排序
+      tprProjects.sort((a, b) => b.name.localeCompare(a.name));
+      bizProjects.sort((a, b) => b.name.localeCompare(a.name));
+
+      TPR_PROJECTS = tprProjects;
+      BIZ_PROJECTS = bizProjects;
+
+      renderShelf();
+
+    } catch (error) {
+      console.error('加载项目失败:', error);
+      errorDiv.textContent = '加载失败：' + error.message;
+      errorDiv.classList.remove('hidden');
+
+      // 如果是认证错误，显示设置弹窗
+      if (error.message.includes('401') || error.message.includes('403') || error.message.includes('认证')) {
+        showSettings();
+      }
+    } finally {
+      loadingOverlay.classList.add('hidden');
+    }
+  }
+
+  function formatDate(dateStr) {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${month}-${day}`;
+  }
+
+  // =================== Render Bookshelf ===================
+  function createBookCard(project) {
+    const grad = THEME_GRADIENTS[project.theme] || THEME_GRADIENTS.other;
+    const card = document.createElement('div');
+    card.className = 'book-card';
+    card.dataset.book = project.name;
+    card.style.cssText = '--card-grad: ' + grad + ';';
+    const initials = project.name.replace(/^TPR-/, '').replace(/-\d+$/, '').substring(0, 4) || 'TPR';
+    card.innerHTML = `
+      <div class="book-cover" style="background:${grad}">
+        <div class="book-cover-icon">${escapeHtml(project.theme === 'tpr' ? '⊕' : project.theme === 'ai' ? '◈' : project.theme === 'bp' ? '▣' : project.theme === 'cms' ? '◉' : '◆')}</div>
+        <div class="book-cover-title">${escapeHtml(project.name)}</div>
+      </div>
+      <div class="book-meta">
+        <div class="book-desc">${escapeHtml(project.desc)}</div>
+        <div class="book-stats">
+          <div class="files">
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            ${project.files} 个文件
+          </div>
+          <div class="updated">
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            ${project.date}
+          </div>
+        </div>
+      </div>
+    `;
+    card.addEventListener('click', () => openBook(project));
+    return card;
+  }
+
+  function createListRow(project) {
+    const color = THEME_COLORS[project.theme] || THEME_COLORS.other;
+    const row = document.createElement('div');
+    row.className = 'list-row';
+    row.dataset.book = project.name;
+    row.innerHTML = `
+      <div class="list-row-dot" style="background:${color}"></div>
+      <div class="list-row-name">${escapeHtml(project.name)}</div>
+      <div class="list-row-desc">${escapeHtml(project.desc)}</div>
+      <div class="list-row-meta">${project.files} 个文件 · ${project.date}</div>
+    `;
+    row.addEventListener('click', () => openBook(project));
+    return row;
+  }
+
+  function renderShelf() {
+    // Cards
+    const tprCardsContainer = document.querySelector('[data-group="tpr"] [data-cards]');
+    const bizCardsContainer = document.querySelector('[data-group="biz"] [data-cards]');
+    const tprRowsContainer = document.querySelector('[data-group-list="tpr"] [data-rows]');
+    const bizRowsContainer = document.querySelector('[data-group-list="biz"] [data-rows]');
+
+    if (tprCardsContainer) {
+      // Clear existing content
+      tprCardsContainer.innerHTML = '';
+      bizCardsContainer.innerHTML = '';
+      tprRowsContainer.innerHTML = '';
+      bizRowsContainer.innerHTML = '';
+
+      // Add projects
+      TPR_PROJECTS.forEach(p => tprCardsContainer.appendChild(createBookCard(p)));
+      BIZ_PROJECTS.forEach(p => bizCardsContainer.appendChild(createBookCard(p)));
+      TPR_PROJECTS.forEach(p => tprRowsContainer.appendChild(createListRow(p)));
+      BIZ_PROJECTS.forEach(p => bizRowsContainer.appendChild(createListRow(p)));
+    }
+  }
+
+  // =================== Page Navigation ===================
+  const pages = {
+    library: document.getElementById('page-library'),
+    reader: document.getElementById('page-reader'),
+    search: document.getElementById('page-search')
+  };
+  function showPage(name) {
+    Object.entries(pages).forEach(([k, el]) => el.classList.toggle('active', k === name));
+  }
+
+  async function openBook(project) {
+    document.getElementById('tocBookTitle').textContent = project.name;
+    showPage('reader');
+
+    try {
+      // Load project files
+      const files = await getChildFiles(project.id);
+
+      // Build file tree (max 2 levels deep)
+      const fileTree = await buildFileTree(files);
+
+      // Render TOC
+      renderToc(fileTree);
+
+      // Update doc count
+      const totalFiles = countFiles(fileTree);
+      document.getElementById('tocDocCount').textContent = totalFiles + ' 个文档';
+
+      // Store current project for file loading
+      window.currentProject = project;
+      window.currentFileTree = fileTree;
+
+    } catch (error) {
+      console.error('加载项目文件失败:', error);
+      alert('加载项目文件失败：' + error.message);
+    }
+  }
+
+  async function buildFileTree(items) {
+    const tree = [];
+
+    for (const item of items) {
+      const node = {
+        id: item.id,
+        name: item.name,
+        type: item.type, // 1=folder, 2=file
+        suffix: item.suffix,
+        hasChild: item.hasChild,
+        createTime: item.createTime,
+        createTimeStr: item.createTimeStr,
+        children: []
+      };
+
+      // If it's a folder and has children, load them (recursively, max 2 levels)
+      if (item.type === 1 && item.hasChild) {
+        try {
+          const children = await getChildFiles(item.id);
+          node.children = await buildFileTree(children);
+        } catch (error) {
+          console.error('加载子目录失败:', error);
+        }
+      }
+
+      tree.push(node);
+    }
+
+    return tree;
+  }
+
+  function countFiles(tree) {
+    let count = 0;
+    for (const node of tree) {
+      if (node.type === 2) {
+        count++;
+      } else if (node.children) {
+        count += countFiles(node.children);
+      }
+    }
+    return count;
+  }
+
+  function renderToc(tree) {
+    const tocBody = document.querySelector('.toc-body');
+    tocBody.innerHTML = '';
+
+    let hasChapters = false;
+
+    for (const node of tree) {
+      if (node.type === 1) {
+        // Folder - render as chapter
+        hasChapters = true;
+        const chapterDiv = document.createElement('div');
+        chapterDiv.className = 'toc-chapter';
+
+        const label = document.createElement('div');
+        label.className = 'toc-chapter-label';
+        label.textContent = node.name;
+        chapterDiv.appendChild(label);
+
+        // Render children
+        if (node.children && node.children.length > 0) {
+          node.children.forEach(child => {
+            if (child.type === 2) {
+              chapterDiv.appendChild(createTocItem(child, false));
+            } else if (child.type === 1 && child.children) {
+              // Sub-folder
+              child.children.forEach(subChild => {
+                if (subChild.type === 2) {
+                  chapterDiv.appendChild(createTocItem(subChild, true));
+                }
+              });
+            }
+          });
+        }
+
+        tocBody.appendChild(chapterDiv);
+      } else {
+        // Top-level file
+        tocBody.appendChild(createTocItem(node, false));
+      }
+    }
+
+    if (!hasChapters && tree.length > 0) {
+      // No folders, just add a label
+      const label = document.createElement('div');
+      label.className = 'toc-chapter-label';
+      label.textContent = '文件';
+      tocBody.insertBefore(label, tocBody.firstChild);
+    }
+  }
+
+  function createTocItem(file, isSub) {
+    const item = document.createElement('div');
+    item.className = 'toc-item' + (isSub ? ' sub' : '');
+    item.dataset.fileId = file.id;
+    item.dataset.fileName = file.name;
+    item.dataset.suffix = file.suffix;
+
+    const marker = document.createElement('div');
+    marker.className = 'toc-marker';
+    item.appendChild(marker);
+
+    const icon = document.createElement('div');
+    icon.innerHTML = FILE_ICON_SVG;
+    icon.className = 'toc-icon';
+    item.appendChild(icon);
+
+    const text = document.createElement('span');
+    text.textContent = file.name;
+    item.appendChild(text);
+
+    item.addEventListener('click', () => openFile(file));
+
+    return item;
+  }
+
+  async function openFile(file) {
+    // Update active state
+    document.querySelectorAll('.toc-item').forEach(item => item.classList.remove('active'));
+    const currentItem = document.querySelector(`.toc-item[data-file-id="${file.id}"]`);
+    if (currentItem) {
+      currentItem.classList.add('active');
+    }
+
+    // Show loading
+    const contentDiv = document.querySelector('.reader-content-inner');
+    contentDiv.innerHTML = '<div class="spinner"></div><div class="loading-text">正在加载文件...</div>';
+
+    // Load file content
+    const html = await loadFileContent(file.id, file.name, file.suffix);
+    contentDiv.innerHTML = html;
+
+    // Update breadcrumbs
+    const breadcrumbs = document.querySelector('.breadcrumbs');
+    if (breadcrumbs && window.currentProject) {
+      breadcrumbs.innerHTML = `
+        <span class="crumb" data-action="home">首页</span>
+        <span class="sep">/</span>
+        <span class="crumb current">${escapeHtml(window.currentProject.name)}</span>
+        <span class="sep">/</span>
+        <span class="crumb current">${escapeHtml(file.name)}</span>
+      `;
+    }
+  }
+
+  // Breadcrumb clicks
+  document.querySelector('.breadcrumbs').addEventListener('click', (e) => {
+    const crumb = e.target.closest('.crumb');
+    if (crumb && crumb.dataset.action === 'home') {
+      showPage('library');
+    }
+  });
+
+  // Back to library
+  document.getElementById('backToLibrary').addEventListener('click', () => showPage('library'));
+  document.getElementById('bcHome').addEventListener('click', () => showPage('library'));
+  document.getElementById('searchBack').addEventListener('click', () => showPage('library'));
+
+  // Library search
+  document.getElementById('libSearch').addEventListener('keydown', e => {
+    if (e.key === 'Enter') showPage('search');
+  });
+
+  // =================== View toggle ===================
+  const viewToggle = document.getElementById('viewToggle');
+  const shelfCards = document.getElementById('shelfCards');
+  const shelfList = document.getElementById('shelfList');
+  viewToggle.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      viewToggle.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const v = btn.dataset.view;
+      shelfCards.classList.toggle('active', v === 'cards');
+      shelfList.classList.toggle('active', v === 'list');
+    });
+  });
+
+  // =================== Init ===================
+  loadProjects();
+
+  // Different doc renderers keyed by data-doc
+  const docs = {
+    pidx: () => pidxDoc(),
+    discovery: () => markdownDoc('DISCOVERY', 'TPR 项目的 Discovery 阶段记录'),
+    'docs-deploy-plan': () => markdownDoc('docs-deploy-plan', '文档部署计划'),
+    'battle-docs': () => markdownDoc('Battle: docs-deploy-plan', 'CONDITIONAL PASS — 文档部署计划评审'),
+    'battle-file': () => markdownDoc('Battle: file-browser-interaction', 'CONDITIONAL PASS — 文件浏览器交互评审'),
+    closure: () => markdownDoc('P-ACPT-01', '项目验收标准与结果'),
+    arch: () => markdownDoc('架构设计', '系统架构总览'),
+    api: () => markdownDoc('API 规范', '接口契约与错误码'),
+    dataflow: () => markdownDoc('数据流设计', '从输入到落库'),
+    'api-pdf': () => pdfViewer('玄关开放平台 API.pdf'),
+    'guide-docx': () => docxViewer('知识库接入指南.docx'),
+    best: () => markdownDoc('最佳实践', '五个项目的 TPR 复盘'),
+    'image-png': () => imageViewer('架构示意图.png'),
+    deploy: () => codeViewer('deploy.sh', 'bash'),
+    config: () => codeViewer('config.json', 'json'),
+    monitor: () => markdownDoc('监控配置', '关键指标与告警')
+  };
+
+  // Legacy TOC handling for static HTML (fallback)
+  const tocItems = document.querySelectorAll('.toc-item[data-doc]');
+  const docBody = document.querySelector('.doc-body');
+  const bcDoc = document.getElementById('bcDoc');
+
+  if (tocItems.length > 0 && bcDoc && docBody) {
+    function setActiveToc(target) {
+      tocItems.forEach(i => i.classList.remove('active'));
+      target.classList.add('active');
+    }
+
+    tocItems.forEach(item => {
+      item.addEventListener('click', () => {
+        const key = item.dataset.doc;
+        const label = item.textContent.trim();
+        bcDoc.textContent = label;
+        setActiveToc(item);
+        const render = docs[key] || defaultReadme;
+        docBody.innerHTML = render();
+        // scroll to top
+        document.getElementById('readerContent').scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    });
+  }
+
+  // =================== Outline panel ===================
+  const outlinePanel = document.getElementById('outlinePanel');
+  document.getElementById('outlineBtn').addEventListener('click', () => outlinePanel.classList.toggle('open'));
+  document.getElementById('closeOutline').addEventListener('click', () => outlinePanel.classList.remove('open'));
+
+  // =================== Doc renderers ===================
+  function pidxDoc() {
+    return `
+      <div class="doc-eyebrow"><span class="pill">P-IDX-01</span> · 项目主索引</div>
+      <h1>TPR-20260618-001</h1>
+      <p style="font-size:18px;color:#4B5563;font-style:italic;line-height:1.7;margin-bottom:32px;">
+        TPR 框架部署与文档浏览 —— 从 Discovery 到 Closure 的完整项目记录。
+      </p>
+      <div class="doc-meta-line">
+        <span>evan.zhao</span><span>创建于 2026-06-18</span><span>状态: 进行中</span>
+      </div>
+      <h2>项目背景</h2>
+      <p>本项目旨在完成 TPR 方法论框架的部署，并建立知识库文件的在线浏览能力。通过标准化的 Discovery → Battle → Implementation → Execution → Closure 流程，确保交付质量。</p>
+      <h2>核心目标</h2>
+      <ul>
+        <li>完成 xgkb-explorer 的 Vite + React 项目搭建</li>
+        <li>集成玄关知识库 API（认证、目录浏览、文件读取）</li>
+        <li>部署到 VPS 并支持在线预览</li>
+        <li>实现 Markdown 渲染、代码高亮、图片预览</li>
+      </ul>
+      <h2>里程碑</h2>
+      <table>
+        <thead><tr><th>阶段</th><th>文档</th><th>状态</th></tr></thead>
+        <tbody>
+          <tr><td>Discovery</td><td>DISCOVERY.md</td><td>✅ 完成</td></tr>
+          <tr><td>Battle</td><td>docs-deploy-plan-CONDITIONAL_PASS.md</td><td>✅ 通过</td></tr>
+          <tr><td>Implementation</td><td>deploy.sh</td><td>✅ 已部署</td></tr>
+          <tr><td>Closure</td><td>P-ACPT-01.md</td><td>🔄 进行中</td></tr>
+        </tbody>
+      </table>
+      <h2>风险与依赖</h2>
+      <blockquote>需添加 DNS 解析记录才能启用独立域名访问。当前通过 tpr.20100706.xyz/xgkb/ 路径提供服务。</blockquote>
+    `;
+  }
+
+  function defaultReadme() {
+    return `
+      <div class="doc-eyebrow"><span class="pill">README</span> · 序言</div>
+      <h1>TPR 工作方法论</h1>
+      <p style="font-size:18px;color:#4B5563;font-style:italic;line-height:1.7;margin-bottom:32px;">
+        Think / Probe / Review —— 一套用于复杂方案规划与高质量交付的认知工作框架。
+      </p>
+      <div class="doc-meta-line">
+        <span>evan.zhao</span><span>更新于 2026-06-21</span><span>阅读约 12 分钟</span>
+      </div>
+      <h2>一、什么是 TPR？</h2>
+      <p><strong>TPR</strong> 是 <em>Think · Probe · Review</em> 三个阶段的组合…</p>
+    `;
+  }
+
+  function markdownDoc(title, subtitle) {
+    return `
+      <div class="doc-eyebrow"><span class="pill">DOC</span> · ${escapeHtml(subtitle)}</div>
+      <h1>${escapeHtml(title)}</h1>
+      <p style="font-size:17px;color:#4B5563;line-height:1.7;margin-bottom:32px;">
+        ${escapeHtml(subtitle)}。本文为占位渲染，用于演示知识库内部阅读体验。
+      </p>
+      <div class="doc-meta-line">
+        <span>evan.zhao</span><span>更新于 2026-06-20</span><span>阅读约 8 分钟</span>
+      </div>
+      <h2>核心要点</h2>
+      <p>这是 <code>${escapeHtml(title)}</code> 的内容预览。在真实环境中，Markdown 会被渲染为带有 GitBook 风格的版式，包含以下元素：</p>
+      <ul>
+        <li>二级、三级标题与目录层级</li>
+        <li>有序与无序列表</li>
+        <li>行内代码 <code>code</code> 与代码块</li>
+        <li>引用块、表格、提示框、链接</li>
+      </ul>
+      <blockquote>
+        "设计良好的文档是团队的共同记忆。"
+      </blockquote>
+      <h3>子章节示例</h3>
+      <p>这里用来说明衬线字体下的二级与三级标题的视觉差异。三级标题较小、稍弱，但仍清晰。</p>
+      <table>
+        <thead><tr><th>维度</th><th>说明</th><th>状态</th></tr></thead>
+        <tbody>
+          <tr><td>完整性</td><td>所有必要字段均有定义</td><td>✅</td></tr>
+          <tr><td>一致性</td><td>术语与命名风格统一</td><td>✅</td></tr>
+          <tr><td>可追溯</td><td>决策可回溯到原始讨论</td><td>🔄</td></tr>
+        </tbody>
+      </table>
+    `;
+  }
+
+  function pdfViewer(name) {
+    return `
+      <div class="file-viewer-head" style="background:#FFFFFF;padding:0 0 16px;border:none;">
+        <div class="file-name" style="font-size:18px;font-family:Georgia,serif;font-weight:600;">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#B7542E" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+          ${escapeHtml(name)}
+        </div>
+        <div style="font-size:13px;color:#6B7280;">PDF · 24 页 · 2.1 MB</div>
+      </div>
+      <div class="file-viewer" style="border:none;box-shadow:none;">
+        <div class="file-viewer-head">
+          <div class="file-name">
+            <span style="background:#FCE7DC;color:#B7542E;padding:1px 6px;border-radius:3px;font-size:11px;font-weight:600;">PDF</span>
+            ${escapeHtml(name)}
+          </div>
+          <div class="file-actions">
+            <button class="icon-btn" title="下载"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+            <button class="icon-btn" title="在新窗口打开"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></button>
+            <button class="icon-btn" title="更多"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+          </div>
+        </div>
+        <div class="file-viewer-body" style="background:#E8E6E0;overflow-y:auto;">
+          <div class="pdf-page">
+            <div class="pdf-doc-title">玄关开放平台 API 文档</div>
+            <div class="pdf-doc-sub">Version 2.4 · 2026-06-15 · 共 24 页</div>
+            <div class="pdf-h2"></div>
+            <div class="pdf-line long"></div>
+            <div class="pdf-line long"></div>
+            <div class="pdf-line med"></div>
+            <div class="pdf-line short"></div>
+            <div class="pdf-h3"></div>
+            <div class="pdf-line long"></div>
+            <div class="pdf-line med"></div>
+            <div class="pdf-line long"></div>
+            <div class="pdf-line long"></div>
+            <div class="pdf-line short"></div>
+            <div class="pdf-h2"></div>
+            <div class="pdf-line long"></div>
+            <div class="pdf-line med"></div>
+            <div class="pdf-line long"></div>
+            <div style="margin-top:36px;display:flex;gap:8px;align-items:center;color:#6B7280;font-size:11px;">
+              <span>— 1 —</span>
+            </div>
+          </div>
+          <div class="pdf-page" style="opacity:0.85;min-height:500px;">
+            <div class="pdf-h2" style="width:60%"></div>
+            <div class="pdf-line long"></div>
+            <div class="pdf-line long"></div>
+            <div class="pdf-line med"></div>
+            <div class="pdf-h3"></div>
+            <div class="pdf-line long"></div>
+            <div class="pdf-line med"></div>
+            <div class="pdf-line long"></div>
+            <div class="pdf-line long"></div>
+            <div class="pdf-h3"></div>
+            <div class="pdf-line long"></div>
+            <div class="pdf-line med"></div>
+            <div class="pdf-h2" style="width:50%"></div>
+            <div class="pdf-line long"></div>
+            <div class="pdf-line long"></div>
+            <div class="pdf-line short"></div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function docxViewer(name) {
+    return `
+      <div class="file-viewer-head" style="background:#FFFFFF;padding:0 0 16px;border:none;">
+        <div class="file-name" style="font-size:18px;font-family:Georgia,serif;font-weight:600;">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+          ${escapeHtml(name)}
+        </div>
+        <div style="font-size:13px;color:#6B7280;">DOCX · 18 页 · 845 KB</div>
+      </div>
+      <div class="file-viewer" style="border:none;box-shadow:none;">
+        <div class="file-viewer-head">
+          <div class="file-name">
+            <span style="background:#E8EEFB;color:#2563EB;padding:1px 6px;border-radius:3px;font-size:11px;font-weight:600;">DOCX</span>
+            ${escapeHtml(name)}
+          </div>
+          <div class="file-actions">
+            <button class="icon-btn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+            <button class="icon-btn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></button>
+            <button class="icon-btn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+          </div>
+        </div>
+        <div class="file-viewer-body" style="background:#E8E6E0;overflow-y:auto;padding:24px 0;">
+          <div class="docx-page">
+            <h2 style="font-family:Georgia,serif;font-size:24px;color:#1A1A1A;margin-bottom:6px;">知识库接入指南</h2>
+            <div style="font-size:12px;color:#6B7280;margin-bottom:24px;padding-bottom:14px;border-bottom:1px solid #ECECE6;">内部文档 · v1.2 · 2026-05-20</div>
+            <h3 style="font-family:Georgia,serif;font-size:16px;color:#1A1A1A;margin:18px 0 8px;">一、概述</h3>
+            <p style="font-size:14px;color:#2A2A2A;line-height:1.8;margin:8px 0;">本文档描述新项目如何接入玄关知识库系统，包括账户申请、权限配置、目录结构、文档上传与协作流程。</p>
+            <h3 style="font-family:Georgia,serif;font-size:16px;color:#1A1A1A;margin:18px 0 8px;">二、目录结构规范</h3>
+            <p style="font-size:14px;color:#2A2A2A;line-height:1.8;margin:8px 0;">建议每个项目按以下层级组织：</p>
+            <p style="font-size:13px;color:#2A2A2A;line-height:1.8;margin:6px 0;font-family:'SF Mono',monospace;background:#F5F3EE;padding:10px 14px;border-radius:6px;">/项目名<br>  /README.md<br>  /设计文档<br>  /参考资料<br>  /脚本工具</p>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function imageViewer(name) {
+    return `
+      <div class="file-viewer-head" style="background:#FFFFFF;padding:0 0 16px;border:none;">
+        <div class="file-name" style="font-size:18px;font-family:Georgia,serif;font-weight:600;">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#2D6A4F" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+          ${escapeHtml(name)}
+        </div>
+        <div style="font-size:13px;color:#6B7280;">PNG · 1920×1080 · 1.2 MB</div>
+      </div>
+      <div class="file-viewer" style="border:none;box-shadow:none;">
+        <div class="file-viewer-head">
+          <div class="file-name">
+            <span style="background:#DCEAE3;color:#2D6A4F;padding:1px 6px;border-radius:3px;font-size:11px;font-weight:600;">PNG</span>
+            ${escapeHtml(name)}
+          </div>
+          <div class="file-actions">
+            <button class="icon-btn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+            <button class="icon-btn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg></button>
+          </div>
+        </div>
+        <div class="file-viewer-body" style="background:#1A1A1A;">
+          <div class="img-stage">
+            <div class="img-box">
+              <svg width="180" height="120" viewBox="0 0 180 120" fill="none" style="opacity:0.5">
+                <rect x="10" y="20" width="40" height="80" rx="4" fill="rgba(255,255,255,0.3)"/>
+                <rect x="60" y="40" width="40" height="60" rx="4" fill="rgba(255,255,255,0.3)"/>
+                <rect x="110" y="10" width="40" height="90" rx="4" fill="rgba(255,255,255,0.3)"/>
+                <path d="M0 50 L40 30 L80 60 L120 30 L180 50" stroke="rgba(255,255,255,0.6)" stroke-width="2" fill="none"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function codeViewer(name, lang) {
+    const samples = {
+      bash: `#!/bin/bash
+# TPR 框架部署脚本
+set -euo pipefail
+
+ENV=\${1:-staging}
+echo "→ Deploying TPR framework to $ENV"
+
+# Probe: 验证环境
+if ! command -v docker >/dev/null 2>&1; then
+  echo "✗ docker not found"
+  exit 1
+fi
+
+# Think: 加载配置
+source "config/$ENV.env"
+
+# Review: 部署后健康检查
+docker compose up -d
+sleep 3
+curl -fsS "$API_URL/health" || { echo "✗ health check failed"; exit 1; }
+echo "✓ Done"`,
+      json: `{
+  "framework": "TPR",
+  "version": "2.4.0",
+  "stages": {
+    "think":  { "min_duration": "1h",  "artifact": "thinking.md" },
+    "probe":  { "min_duration": "30m", "artifact": "prototype/"  },
+    "review": { "min_duration": "45m", "artifact": "retrospective.md" }
+  },
+  "environments": ["staging", "production"],
+  "reviewers": ["evan.zhao", "team.lead"]
+}`
+    };
+    const code = samples[lang] || samples.bash;
+    return `
+      <div class="file-viewer-head" style="background:#FFFFFF;padding:0 0 16px;border:none;">
+        <div class="file-name" style="font-size:18px;font-family:Georgia,serif;font-weight:600;">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></svg>
+          ${escapeHtml(name)}
+        </div>
+        <div style="font-size:13px;color:#6B7280;">${lang.toUpperCase()} · ${code.split('\n').length} 行</div>
+      </div>
+      <div class="file-viewer" style="border:none;box-shadow:none;">
+        <div class="file-viewer-head">
+          <div class="file-name">
+            <span style="background:#F0EFEA;color:#4B5563;padding:1px 6px;border-radius:3px;font-size:11px;font-weight:600;">${lang.toUpperCase()}</span>
+            ${escapeHtml(name)}
+          </div>
+          <div class="file-actions">
+            <button class="icon-btn" title="复制"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+            <button class="icon-btn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+          </div>
+        </div>
+        <div class="file-viewer-body" style="background:#FFFFFF;height:auto;">
+          <pre style="background:#F5F3EE;border:none;border-radius:12px;padding:24px 28px;margin:0;font-size:13.5px;line-height:1.75;color:#1A1A1A;font-family:'SF Mono',Menlo,Consolas,monospace;white-space:pre;overflow-x:auto;"><code>${escapeHtml(code)}</code></pre>
+        </div>
+      </div>
+    `;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  // =================== Settings Modal ===================
+  const settingsModal = document.getElementById('settingsModal');
+  const appKeyInput = document.getElementById('appKeyInput');
+  const serverUrlInput = document.getElementById('serverUrlInput');
+  const settingsError = document.getElementById('settingsError');
+
+  function showSettings() {
+    appKeyInput.value = APP_KEY;
+    serverUrlInput.value = SERVER_URL;
+    settingsError.classList.add('hidden');
+    settingsModal.classList.add('active');
+  }
+
+  function hideSettings() {
+    settingsModal.classList.remove('active');
+  }
+
+  function saveSettings() {
+    const newAppKey = appKeyInput.value.trim();
+    const newServerUrl = serverUrlInput.value.trim();
+
+    if (!newAppKey) {
+      settingsError.textContent = 'AppKey 不能为空';
+      settingsError.classList.remove('hidden');
+      return;
+    }
+
+    if (!newServerUrl) {
+      settingsError.textContent = '服务器地址不能为空';
+      settingsError.classList.remove('hidden');
+      return;
+    }
+
+    // Save to localStorage
+    localStorage.setItem('xgkb_app_key', newAppKey);
+    localStorage.setItem('xgkb_server_url', newServerUrl);
+
+    // Update global variables
+    APP_KEY = newAppKey;
+    SERVER_URL = newServerUrl;
+    PROJECT_ID = null; // Reset project ID
+
+    hideSettings();
+
+    // Reload projects
+    loadProjects();
+  }
+
+  // Event listeners
+  document.querySelector('.icon-btn[title="设置"]').addEventListener('click', showSettings);
+  document.getElementById('settingsCancel').addEventListener('click', hideSettings);
+  document.getElementById('settingsSave').addEventListener('click', saveSettings);
+
+  // Close modal on backdrop click
+  settingsModal.addEventListener('click', (e) => {
+    if (e.target === settingsModal) hideSettings();
+  });
+
+  // =================== Simple Markdown Renderer ===================
+  function renderMarkdown(markdown) {
+    if (!markdown) return '';
+
+    let html = markdown;
+
+    // Headers (h1-h4)
+    html = html.replace(/^####\s+(.+)$/gm, '<h4>$1</h4>');
+    html = html.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>');
+    html = html.replace(/^##\s+(.+)$/gm, '<h2>$1</h2>');
+    html = html.replace(/^#\s+(.+)$/gm, '<h1>$1</h1>');
+
+    // Bold and italic
+    html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    html = html.replace(/___(.+?)___/g, '<strong><em>$1</em></strong>');
+    html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
+    html = html.replace(/_(.+?)_/g, '<em>$1</em>');
+
+    // Inline code
+    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+    // Code blocks
+    html = html.replace(/```(\w*)\n([\s\S]+?)```/g, (match, lang, code) => {
+      return '<pre><code class="language-' + lang + '">' + escapeHtml(code.trim()) + '</code></pre>';
+    });
+
+    // Horizontal rule
+    html = html.replace(/^---$/gm, '<hr>');
+    html = html.replace(/^\*\*\*$/gm, '<hr>');
+
+    // Unordered lists
+    html = html.replace(/^\*\s+(.+)$/gm, '<li>$1</li>');
+    html = html.replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>');
+    html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+
+    // Blockquotes
+    html = html.replace(/^&gt;\s+(.+)$/gm, '<blockquote>$1</blockquote>');
+
+    // Links
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+
+    // Images
+    html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">');
+
+    // Paragraphs (lines that aren't already wrapped)
+    html = html.split('\n\n').map(para => {
+      if (para.startsWith('<h') || para.startsWith('<ul') || para.startsWith('<blockquote') ||
+          para.startsWith('<pre') || para.startsWith('<hr') || para.trim() === '') {
+        return para;
+      }
+      return '<p>' + para.trim() + '</p>';
+    }).join('\n');
+
+    return html;
+  }
+
+  // =================== File Content Loading ===================
+  async function loadFileContent(fileId, fileName, suffix) {
+    try {
+      // 统一走 doc-preview 公网预览服务
+      const previewUrl = await getDocPreviewUrl(fileId, fileName, suffix);
+      return `<iframe src="${previewUrl}" style="width:100%;height:100%;border:none;" allowfullscreen></iframe>`;
+    } catch (error) {
+      console.error('加载文件内容失败:', error);
+      return `<div style="padding:40px;text-align:center;color:#6B7280;">
+        <div style="font-size:36px;margin-bottom:12px;">⚠️</div>
+        <div>加载失败: ${escapeHtml(error.message || '未知错误')}</div>
+        <div style="margin-top:12px;font-size:13px;">请检查 AppKey 配置是否正确</div>
+      </div>`;
+    }
+    } catch (error) {
+      console.error('加载文件内容失败:', error);
+      return `
+        <div style="padding:40px;text-align:center;color:#DC2626;">
+          <div style="font-size:18px;margin-bottom:12px;">加载失败</div>
+          <div style="font-size:14px;">${escapeHtml(error.message)}</div>
+        </div>
+      `;
+    }
+  }
+</script>
+</body>
+</html>

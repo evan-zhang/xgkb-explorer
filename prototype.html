@@ -1,0 +1,1923 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>玄关知识库 · XGKB Explorer</title>
+<style>
+  /* ============ Reset & Base ============ */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    color: #1F2937;
+    background: #F8F9FA;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow: hidden;
+  }
+  button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+  input { font-family: inherit; }
+  svg { display: block; }
+
+  /* ============ App Layout ============ */
+  .app {
+    display: grid;
+    grid-template-rows: 60px 1fr;
+    grid-template-columns: 240px 1fr;
+    grid-template-areas:
+      "topbar topbar"
+      "sidebar main";
+    height: 100vh;
+    min-width: 1024px;
+  }
+
+  /* ============ Topbar ============ */
+  .topbar {
+    grid-area: topbar;
+    background: #FFFFFF;
+    border-bottom: 1px solid #E5E7EB;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 24px;
+    z-index: 10;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 220px;
+  }
+  .brand-logo {
+    width: 32px; height: 32px;
+    background: linear-gradient(135deg, #2563EB 0%, #7C3AED 100%);
+    border-radius: 8px;
+    display: grid; place-items: center;
+    color: white;
+  }
+  .brand-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1F2937;
+    letter-spacing: -0.2px;
+  }
+  .brand-sub {
+    font-size: 11px;
+    color: #6B7280;
+    margin-top: 1px;
+  }
+
+  .breadcrumb {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #6B7280;
+    overflow: hidden;
+  }
+  .crumb {
+    padding: 4px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+  .crumb:hover { background: #F3F4F6; color: #1F2937; }
+  .crumb.current { color: #1F2937; font-weight: 500; cursor: default; }
+  .crumb.current:hover { background: transparent; }
+  .crumb-sep { color: #D1D5DB; user-select: none; }
+
+  .topbar-actions { display: flex; align-items: center; gap: 8px; }
+  .search-box {
+    position: relative;
+    width: 280px;
+  }
+  .search-box input {
+    width: 100%;
+    height: 34px;
+    padding: 0 12px 0 36px;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    background: #F8F9FA;
+    font-size: 13px;
+    color: #1F2937;
+    transition: all 0.15s;
+  }
+  .search-box input:focus {
+    outline: none;
+    background: #FFFFFF;
+    border-color: #2563EB;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  }
+  .search-box .search-icon {
+    position: absolute;
+    left: 11px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9CA3AF;
+    pointer-events: none;
+  }
+  .search-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0; right: 0;
+    background: white;
+    border: 1px solid #E5E7EB;
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    max-height: 360px;
+    overflow-y: auto;
+    z-index: 20;
+    display: none;
+  }
+  .search-dropdown.show { display: block; }
+  .search-result {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    cursor: pointer;
+  }
+  .search-result:hover { background: #F3F4F6; }
+  .search-result-meta { font-size: 11px; color: #6B7280; margin-left: auto; }
+
+  .icon-btn {
+    width: 34px; height: 34px;
+    border-radius: 8px;
+    display: grid; place-items: center;
+    color: #6B7280;
+    transition: all 0.15s;
+  }
+  .icon-btn:hover { background: #F3F4F6; color: #1F2937; }
+
+  .avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #F59E0B 0%, #EF4444 100%);
+    color: white;
+    display: grid; place-items: center;
+    font-size: 12px;
+    font-weight: 600;
+    margin-left: 4px;
+    cursor: pointer;
+  }
+
+  /* ============ Sidebar ============ */
+  .sidebar {
+    grid-area: sidebar;
+    background: #FFFFFF;
+    border-right: 1px solid #E5E7EB;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .space-selector {
+    margin: 14px;
+    padding: 10px 12px;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .space-selector:hover { border-color: #D1D5DB; background: #F8F9FA; }
+  .space-icon {
+    width: 28px; height: 28px;
+    background: linear-gradient(135deg, #2563EB, #4F46E5);
+    border-radius: 6px;
+    display: grid; place-items: center;
+    color: white;
+    flex-shrink: 0;
+  }
+  .space-info { flex: 1; min-width: 0; }
+  .space-name { font-size: 13px; font-weight: 600; color: #1F2937; }
+  .space-meta { font-size: 11px; color: #6B7280; margin-top: 1px; }
+
+  .sidebar-section {
+    padding: 0 14px;
+    margin-top: 8px;
+  }
+  .sidebar-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: #6B7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 6px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .sidebar-title .new-btn {
+    color: #6B7280;
+    padding: 2px;
+    border-radius: 4px;
+  }
+  .sidebar-title .new-btn:hover { background: #F3F4F6; color: #1F2937; }
+
+  .tree {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 8px 12px;
+  }
+  .tree-node {
+    user-select: none;
+  }
+  .tree-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #4B5563;
+    transition: background 0.12s;
+    white-space: nowrap;
+  }
+  .tree-item:hover { background: #F3F4F6; color: #1F2937; }
+  .tree-item.active { background: #EFF6FF; color: #2563EB; font-weight: 500; }
+  .tree-item .chevron {
+    width: 14px; height: 14px;
+    transition: transform 0.15s;
+    color: #9CA3AF;
+    flex-shrink: 0;
+  }
+  .tree-item.open .chevron { transform: rotate(90deg); }
+  .tree-item .node-icon { width: 16px; height: 16px; flex-shrink: 0; color: #6B7280; }
+  .tree-item.active .node-icon { color: #2563EB; }
+  .tree-item .label { overflow: hidden; text-overflow: ellipsis; }
+  .tree-children { padding-left: 14px; display: none; }
+  .tree-children.open { display: block; }
+
+  .storage {
+    margin: 12px 14px;
+    padding: 10px 12px;
+    border-top: 1px solid #E5E7EB;
+    padding-top: 14px;
+  }
+  .storage-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #6B7280;
+    margin-bottom: 6px;
+  }
+  .storage-label strong { color: #1F2937; font-weight: 600; }
+  .storage-bar {
+    height: 4px;
+    background: #E5E7EB;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .storage-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #2563EB, #7C3AED);
+    border-radius: 2px;
+  }
+
+  /* ============ Main ============ */
+  .main {
+    grid-area: main;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .toolbar {
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #FFFFFF;
+    border-bottom: 1px solid #E5E7EB;
+  }
+  .toolbar-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1F2937;
+    margin-right: 8px;
+  }
+  .toolbar-sub {
+    font-size: 12px;
+    color: #6B7280;
+    font-weight: 400;
+  }
+  .toolbar-spacer { flex: 1; }
+
+  .filter-tabs {
+    display: flex;
+    background: #F3F4F6;
+    border-radius: 8px;
+    padding: 3px;
+    gap: 2px;
+  }
+  .filter-tab {
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #6B7280;
+    font-weight: 500;
+    transition: all 0.15s;
+  }
+  .filter-tab:hover { color: #1F2937; }
+  .filter-tab.active {
+    background: #FFFFFF;
+    color: #1F2937;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  }
+
+  .view-toggle {
+    display: flex;
+    background: #F3F4F6;
+    border-radius: 8px;
+    padding: 3px;
+    gap: 2px;
+  }
+  .view-btn {
+    width: 30px; height: 26px;
+    border-radius: 5px;
+    display: grid; place-items: center;
+    color: #6B7280;
+    transition: all 0.15s;
+  }
+  .view-btn:hover { color: #1F2937; }
+  .view-btn.active { background: #FFFFFF; color: #2563EB; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+
+  .sort-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    color: #4B5563;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.15s;
+  }
+  .sort-btn:hover { background: #F3F4F6; }
+
+  /* ============ Content Area ============ */
+  .content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 24px 40px;
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    margin-top: 8px;
+  }
+  .section-header h3 {
+    font-size: 12px;
+    font-weight: 600;
+    color: #6B7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .section-header .count {
+    font-size: 12px;
+    color: #9CA3AF;
+    font-weight: 400;
+  }
+
+  /* Grid */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 14px;
+  }
+  .file-card {
+    background: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-radius: 10px;
+    padding: 16px 14px 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .file-card:hover {
+    border-color: #D1D5DB;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    transform: translateY(-1px);
+  }
+  .file-card.selected {
+    border-color: #2563EB;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+  }
+  .file-thumb {
+    width: 100%;
+    height: 96px;
+    display: grid;
+    place-items: center;
+    margin-bottom: 12px;
+    position: relative;
+  }
+  .file-thumb-icon {
+    width: 56px; height: 56px;
+    border-radius: 12px;
+    display: grid; place-items: center;
+    color: white;
+  }
+  .file-thumb-icon svg { width: 28px; height: 28px; }
+  .file-card .file-name {
+    font-size: 13px;
+    color: #1F2937;
+    font-weight: 500;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-bottom: 4px;
+  }
+  .file-card .file-meta {
+    font-size: 11px;
+    color: #6B7280;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .file-card .file-tag {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 500;
+    background: #F3F4F6;
+    color: #6B7280;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+  .file-card .file-actions {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: none;
+  }
+  .file-card:hover .file-actions { display: flex; }
+  .file-card .file-actions button {
+    width: 24px; height: 24px;
+    border-radius: 5px;
+    background: rgba(255,255,255,0.95);
+    color: #6B7280;
+    display: grid; place-items: center;
+  }
+  .file-card .file-actions button:hover { background: #F3F4F6; color: #1F2937; }
+
+  /* List */
+  .list { display: flex; flex-direction: column; gap: 1px; }
+  .list-row {
+    display: grid;
+    grid-template-columns: 32px 1fr 100px 90px 100px 40px;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.12s;
+    font-size: 13px;
+  }
+  .list-row.header {
+    cursor: default;
+    font-size: 11px;
+    color: #6B7280;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    padding: 8px 12px;
+  }
+  .list-row.header:hover { background: transparent; }
+  .list-row:not(.header):hover { background: #F3F4F6; }
+  .list-row.selected { background: #EFF6FF; }
+  .list-row .row-icon {
+    width: 32px; height: 32px;
+    border-radius: 6px;
+    display: grid; place-items: center;
+    color: white;
+  }
+  .list-row .row-icon svg { width: 16px; height: 16px; }
+  .list-row .row-name {
+    color: #1F2937;
+    font-weight: 500;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .list-row .row-meta { color: #6B7280; font-size: 12px; }
+  .list-row .row-action { display: flex; justify-content: flex-end; }
+  .list-row .row-action button {
+    width: 28px; height: 28px;
+    border-radius: 5px;
+    color: #6B7280;
+    display: grid; place-items: center;
+    opacity: 0;
+  }
+  .list-row:hover .row-action button { opacity: 1; }
+  .list-row .row-action button:hover { background: #E5E7EB; color: #1F2937; }
+
+  /* Empty state */
+  .empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: #9CA3AF;
+  }
+  .empty svg { width: 48px; height: 48px; margin: 0 auto 12px; opacity: 0.5; }
+  .empty-title { font-size: 14px; color: #6B7280; margin-bottom: 4px; }
+  .empty-sub { font-size: 12px; }
+
+  /* ============ Preview Panel ============ */
+  .preview-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.3);
+    backdrop-filter: blur(2px);
+    z-index: 100;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .preview-overlay.show { opacity: 1; pointer-events: auto; }
+
+  .preview-panel {
+    position: fixed;
+    top: 0; right: 0; bottom: 0;
+    width: 60%;
+    min-width: 600px;
+    max-width: 1100px;
+    background: #FFFFFF;
+    box-shadow: -10px 0 40px rgba(0,0,0,0.1);
+    z-index: 101;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .preview-panel.show { transform: translateX(0); }
+
+  .preview-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid #E5E7EB;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+  .preview-icon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    display: grid; place-items: center;
+    color: white;
+    flex-shrink: 0;
+  }
+  .preview-icon svg { width: 18px; height: 18px; }
+  .preview-info { flex: 1; min-width: 0; }
+  .preview-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1F2937;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .preview-meta {
+    font-size: 12px;
+    color: #6B7280;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 2px;
+  }
+  .preview-meta .dot { width: 3px; height: 3px; background: #D1D5DB; border-radius: 50%; }
+  .preview-actions { display: flex; align-items: center; gap: 4px; }
+  .preview-btn {
+    height: 32px;
+    padding: 0 12px;
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #4B5563;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s;
+  }
+  .preview-btn:hover { background: #F3F4F6; color: #1F2937; }
+  .preview-btn.primary { background: #2563EB; color: white; }
+  .preview-btn.primary:hover { background: #1D4ED8; color: white; }
+  .preview-btn.icon-only { width: 32px; padding: 0; justify-content: center; }
+
+  .preview-body {
+    flex: 1;
+    overflow: hidden;
+    background: #F8F9FA;
+    position: relative;
+  }
+  .preview-body iframe {
+    width: 100%; height: 100%;
+    border: none;
+    background: white;
+  }
+  .md-render, .code-render {
+    height: 100%;
+    overflow-y: auto;
+    padding: 32px 48px;
+    background: white;
+  }
+  .md-render h1 { font-size: 28px; margin: 0.6em 0 0.4em; color: #1F2937; }
+  .md-render h2 { font-size: 22px; margin: 0.8em 0 0.4em; color: #1F2937; border-bottom: 1px solid #E5E7EB; padding-bottom: 8px; }
+  .md-render h3 { font-size: 18px; margin: 0.8em 0 0.3em; color: #1F2937; }
+  .md-render p { line-height: 1.7; color: #374151; margin: 0.6em 0; }
+  .md-render ul, .md-render ol { margin: 0.6em 0; padding-left: 24px; line-height: 1.7; color: #374151; }
+  .md-render code { background: #F3F4F6; padding: 2px 6px; border-radius: 4px; font-family: "SF Mono", Monaco, Consolas, monospace; font-size: 13px; color: #DC2626; }
+  .md-render pre { background: #1F2937; color: #E5E7EB; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 12px 0; }
+  .md-render pre code { background: transparent; color: inherit; padding: 0; }
+  .md-render blockquote { border-left: 3px solid #2563EB; padding-left: 16px; color: #6B7280; margin: 12px 0; }
+  .md-render a { color: #2563EB; text-decoration: none; }
+  .md-render a:hover { text-decoration: underline; }
+  .md-render table { border-collapse: collapse; margin: 12px 0; }
+  .md-render th, .md-render td { border: 1px solid #E5E7EB; padding: 8px 12px; }
+  .md-render th { background: #F9FAFB; font-weight: 600; }
+
+  .code-render {
+    background: #1F2937;
+    color: #E5E7EB;
+    font-family: "SF Mono", Monaco, Consolas, "Courier New", monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    white-space: pre;
+  }
+  .code-render .k { color: #C084FC; } /* keyword */
+  .code-render .s { color: #86EFAC; } /* string */
+  .code-render .c { color: #6B7280; font-style: italic; } /* comment */
+  .code-render .n { color: #93C5FD; } /* number */
+  .code-render .f { color: #FCD34D; } /* function */
+
+  .img-render {
+    height: 100%;
+    display: grid;
+    place-items: center;
+    background: #F8F9FA;
+    background-image:
+      linear-gradient(45deg, #E5E7EB 25%, transparent 25%),
+      linear-gradient(-45deg, #E5E7EB 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #E5E7EB 75%),
+      linear-gradient(-45deg, transparent 75%, #E5E7EB 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+  }
+  .img-render .img-frame {
+    background: white;
+    padding: 16px;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  }
+  .img-render .img-ph {
+    width: 360px; height: 240px;
+    background: linear-gradient(135deg, #DBEAFE 0%, #C7D2FE 100%);
+    border-radius: 4px;
+    display: grid; place-items: center;
+    color: #4F46E5;
+    font-weight: 600;
+  }
+
+  /* ============ File Icon Types ============ */
+  .ft-folder { background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); }
+  .ft-md     { background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); }
+  .ft-docx   { background: linear-gradient(135deg, #2563EB 0%, #1E40AF 100%); }
+  .ft-pdf    { background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%); }
+  .ft-pptx   { background: linear-gradient(135deg, #F97316 0%, #EA580C 100%); }
+  .ft-xlsx   { background: linear-gradient(135deg, #10B981 0%, #059669 100%); }
+  .ft-code   { background: linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%); }
+  .ft-image  { background: linear-gradient(135deg, #14B8A6 0%, #0D9488 100%); }
+  .ft-text   { background: linear-gradient(135deg, #6B7280 0%, #4B5563 100%); }
+  .ft-other  { background: linear-gradient(135deg, #9CA3AF 0%, #6B7280 100%); }
+
+  /* ============ Scrollbar ============ */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: #1F2937;
+    color: white;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.2s;
+    z-index: 200;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- ========== TOPBAR ========== -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-logo">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 7l8-4 8 4-8 4-8-4z"/>
+          <path d="M4 12l8 4 8-4"/>
+          <path d="M4 17l8 4 8-4"/>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-name">玄关知识库</div>
+        <div class="brand-sub">XG Knowledge Base</div>
+      </div>
+    </div>
+
+    <nav class="breadcrumb" id="breadcrumb">
+      <!-- populated by JS -->
+    </nav>
+
+    <div class="topbar-actions">
+      <div class="search-box">
+        <span class="search-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="7"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </span>
+        <input type="text" placeholder="搜索文件和文件夹..." id="searchInput" autocomplete="off">
+        <div class="search-dropdown" id="searchDropdown"></div>
+      </div>
+      <button class="icon-btn" title="通知">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+      </button>
+      <button class="icon-btn" title="设置">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+      <div class="avatar" title="Evan">E</div>
+    </div>
+  </header>
+
+  <!-- ========== SIDEBAR ========== -->
+  <aside class="sidebar">
+    <div class="space-selector">
+      <div class="space-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2z"/>
+        </svg>
+      </div>
+      <div class="space-info">
+        <div class="space-name">玄关主空间</div>
+        <div class="space-meta">3 个项目 · 24 个文件</div>
+      </div>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="6 9 12 15 18 9"/>
+      </svg>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-title">
+        <span>快捷</span>
+      </div>
+    </div>
+    <div style="padding: 0 8px;">
+      <div class="tree-item" data-quick="recent">
+        <svg class="node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+        <span class="label">最近访问</span>
+      </div>
+      <div class="tree-item" data-quick="starred">
+        <svg class="node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+        </svg>
+        <span class="label">已收藏</span>
+      </div>
+      <div class="tree-item" data-quick="trash">
+        <svg class="node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"/>
+          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+        </svg>
+        <span class="label">回收站</span>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-title">
+        <span>项目</span>
+        <button class="new-btn" title="新建项目">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="tree" id="tree">
+      <!-- populated by JS -->
+    </div>
+
+    <div class="storage">
+      <div class="storage-label">
+        <span>已使用 <strong>2.4 GB</strong></span>
+        <span>10 GB</span>
+      </div>
+      <div class="storage-bar">
+        <div class="storage-fill" style="width: 24%"></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ========== MAIN ========== -->
+  <main class="main">
+    <div class="toolbar">
+      <div>
+        <div class="toolbar-title" id="mainTitle">TPR方法论</div>
+        <div class="toolbar-sub" id="mainSub">7 个项目 · 24 个文件</div>
+      </div>
+      <div class="toolbar-spacer"></div>
+      <div class="filter-tabs" id="filterTabs">
+        <button class="filter-tab active" data-filter="all">全部</button>
+        <button class="filter-tab" data-filter="doc">文档</button>
+        <button class="filter-tab" data-filter="image">图片</button>
+        <button class="filter-tab" data-filter="code">代码</button>
+        <button class="filter-tab" data-filter="other">其他</button>
+      </div>
+      <button class="sort-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="15" y2="12"/>
+          <line x1="3" y1="18" x2="9" y2="18"/>
+        </svg>
+        排序
+      </button>
+      <div class="view-toggle" id="viewToggle">
+        <button class="view-btn active" data-view="grid" title="网格视图">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7"/>
+            <rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/>
+          </svg>
+        </button>
+        <button class="view-btn" data-view="list" title="列表视图">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6"/>
+            <line x1="8" y1="12" x2="21" y2="12"/>
+            <line x1="8" y1="18" x2="21" y2="18"/>
+            <line x1="3" y1="6" x2="3.01" y2="6"/>
+            <line x1="3" y1="12" x2="3.01" y2="12"/>
+            <line x1="3" y1="18" x2="3.01" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <button class="icon-btn" title="新建">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="content" id="content">
+      <!-- populated by JS -->
+    </div>
+  </main>
+</div>
+
+<!-- ========== PREVIEW PANEL ========== -->
+<div class="preview-overlay" id="previewOverlay"></div>
+<aside class="preview-panel" id="previewPanel">
+  <div class="preview-header">
+    <div class="preview-icon" id="previewIcon">
+      <!-- populated by JS -->
+    </div>
+    <div class="preview-info">
+      <div class="preview-name" id="previewName">filename.md</div>
+      <div class="preview-meta" id="previewMeta">
+        <span id="previewType">Markdown</span>
+        <span class="dot"></span>
+        <span id="previewSize">12 KB</span>
+        <span class="dot"></span>
+        <span id="previewDate">今天 14:23</span>
+      </div>
+    </div>
+    <div class="preview-actions">
+      <button class="preview-btn icon-only" title="在新窗口打开" id="openNewBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+          <polyline points="15 3 21 3 21 9"/>
+          <line x1="10" y1="14" x2="21" y2="3"/>
+        </svg>
+      </button>
+      <button class="preview-btn icon-only" title="更多">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="1"/>
+          <circle cx="19" cy="12" r="1"/>
+          <circle cx="5" cy="12" r="1"/>
+        </svg>
+      </button>
+      <button class="preview-btn primary" id="downloadBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        下载
+      </button>
+      <button class="preview-btn icon-only" id="closePreviewBtn" title="关闭 (Esc)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+  <div class="preview-body" id="previewBody">
+    <!-- populated by JS -->
+  </div>
+</aside>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================================================================
+   Mock Data: knowledge base file tree
+   ================================================================ */
+const KB = {
+  id: 'root',
+  name: '玄关知识库',
+  type: 'folder',
+  children: [
+    {
+      id: 'tpr',
+      name: 'TPR方法论',
+      type: 'folder',
+      children: [
+        { id: 'tpr-readme', name: 'README.md', type: 'file', suffix: 'md', size: 4320, updatedAt: '2026-06-19 14:23' },
+        {
+          id: 'tpr-design', name: '设计文档', type: 'folder', children: [
+            { id: 'tpr-arch', name: '架构设计.md', type: 'file', suffix: 'md', size: 18432, updatedAt: '2026-06-18 10:15' },
+            { id: 'tpr-api', name: 'API规范.md', type: 'file', suffix: 'md', size: 12210, updatedAt: '2026-06-15 16:40' }
+          ]
+        },
+        {
+          id: 'tpr-ref', name: '参考资料', type: 'folder', children: [
+            { id: 'tpr-pdf', name: '玄关开放平台API.pdf', type: 'file', suffix: 'pdf', size: 1240343, updatedAt: '2026-06-10 09:30' },
+            { id: 'tpr-docx', name: '知识库接入指南.docx', type: 'file', suffix: 'docx', size: 74694, updatedAt: '2026-06-08 11:20' }
+          ]
+        },
+        {
+          id: 'tpr-scripts', name: '脚本', type: 'folder', children: [
+            { id: 'tpr-deploy', name: 'deploy.sh', type: 'file', suffix: 'sh', size: 2143, updatedAt: '2026-06-20 08:50' },
+            { id: 'tpr-config', name: 'config.json', type: 'file', suffix: 'json', size: 854, updatedAt: '2026-06-20 08:51' }
+          ]
+        }
+      ]
+    },
+    {
+      id: 'notex',
+      name: 'NoteX',
+      type: 'folder',
+      children: [
+        {
+          id: 'notex-mine', name: '我的笔记', type: 'folder', children: [
+            { id: 'notex-daily', name: 'Daily-2026-06.md', type: 'file', suffix: 'md', size: 8293, updatedAt: '2026-06-21 01:02' },
+            { id: 'notex-idea', name: '产品构思.md', type: 'file', suffix: 'md', size: 5420, updatedAt: '2026-06-19 22:15' }
+          ]
+        },
+        {
+          id: 'notex-bp', name: 'BP审计方案', type: 'folder', children: [
+            { id: 'notex-bp-doc', name: '审计流程.md', type: 'file', suffix: 'md', size: 15230, updatedAt: '2026-06-17 14:00' },
+            { id: 'notex-bp-ppt', name: '汇报材料.pptx', type: 'file', suffix: 'pptx', size: 542983, updatedAt: '2026-06-16 18:30' }
+          ]
+        }
+      ]
+    },
+    {
+      id: 'lumirix',
+      name: 'Lumirix',
+      type: 'folder',
+      children: [
+        {
+          id: 'lum-train', name: 'Training', type: 'folder', children: [
+            { id: 'lum-train-data', name: 'dataset-v3.xlsx', type: 'file', suffix: 'xlsx', size: 432102, updatedAt: '2026-06-12 11:00' },
+            { id: 'lum-train-img', name: 'sample-image.png', type: 'file', suffix: 'png', size: 845213, updatedAt: '2026-06-11 15:45' }
+          ]
+        },
+        {
+          id: 'lum-brand', name: 'Brand Assets', type: 'folder', children: [
+            { id: 'lum-logo', name: 'logo-final.svg', type: 'file', suffix: 'svg', size: 12380, updatedAt: '2026-06-05 09:20' },
+            { id: 'lum-cover', name: 'cover.jpg', type: 'file', suffix: 'jpg', size: 632104, updatedAt: '2026-06-05 09:25' }
+          ]
+        }
+      ]
+    }
+  ]
+};
+
+/* Flatten tree for search */
+function flattenTree(node, parentPath = []) {
+  const path = [...parentPath, node.name];
+  const items = [];
+  if (node.type === 'file') {
+    items.push({ ...node, path });
+  }
+  if (node.children) {
+    node.children.forEach(c => items.push(...flattenTree(c, path)));
+  }
+  return items;
+}
+const ALL_FILES = flattenTree(KB);
+
+/* ================================================================
+   Type mapping
+   ================================================================ */
+const TYPE_MAP = {
+  md:   { cls: 'ft-md',     label: 'MD',     category: 'doc',   typeName: 'Markdown', canPreview: true },
+  docx: { cls: 'ft-docx',   label: 'DOCX',   category: 'doc',   typeName: 'Word 文档', canPreview: true },
+  pdf:  { cls: 'ft-pdf',    label: 'PDF',    category: 'doc',   typeName: 'PDF 文档',  canPreview: true },
+  pptx: { cls: 'ft-pptx',   label: 'PPTX',   category: 'doc',   typeName: 'PPT 演示',  canPreview: true },
+  xlsx: { cls: 'ft-xlsx',   label: 'XLSX',   category: 'doc',   typeName: 'Excel 表格', canPreview: true },
+  txt:  { cls: 'ft-text',   label: 'TXT',    category: 'doc',   typeName: '文本文件',  canPreview: true },
+  json: { cls: 'ft-code',   label: 'JSON',   category: 'code',  typeName: 'JSON',     canPreview: true },
+  sh:   { cls: 'ft-code',   label: 'SH',     category: 'code',  typeName: 'Shell 脚本', canPreview: true },
+  svg:  { cls: 'ft-image',  label: 'SVG',    category: 'image', typeName: 'SVG 图像',  canPreview: true },
+  png:  { cls: 'ft-image',  label: 'PNG',    category: 'image', typeName: 'PNG 图片',  canPreview: true },
+  jpg:  { cls: 'ft-image',  label: 'JPG',    category: 'image', typeName: 'JPG 图片',  canPreview: true }
+};
+
+function getTypeInfo(suffix) {
+  return TYPE_MAP[suffix] || { cls: 'ft-other', label: (suffix || 'FILE').toUpperCase(), category: 'other', typeName: '文件', canPreview: true };
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1024 / 1024).toFixed(2) + ' MB';
+}
+
+function fileIconSvg(suffix) {
+  const t = getTypeInfo(suffix);
+  if (suffix === 'md' || suffix === 'txt' || suffix === 'docx' || suffix === 'pdf' || suffix === 'xlsx') {
+    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="8" y1="13" x2="16" y2="13"/>
+      <line x1="8" y1="17" x2="13" y2="17"/>
+    </svg>`;
+  }
+  if (suffix === 'pptx') {
+    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <rect x="8" y="12" width="8" height="6" rx="1"/>
+    </svg>`;
+  }
+  if (suffix === 'png' || suffix === 'jpg' || suffix === 'svg') {
+    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2"/>
+      <circle cx="8.5" cy="8.5" r="1.5"/>
+      <polyline points="21 15 16 10 5 21"/>
+    </svg>`;
+  }
+  if (suffix === 'json' || suffix === 'sh') {
+    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="16 18 22 12 16 6"/>
+      <polyline points="8 6 2 12 8 18"/>
+    </svg>`;
+  }
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+    <polyline points="14 2 14 8 20 8"/>
+  </svg>`;
+}
+
+function folderIconSvg() {
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2z"/>
+  </svg>`;
+}
+
+/* ================================================================
+   State
+   ================================================================ */
+const state = {
+  currentPath: [],     // array of node ids from root
+  currentFilter: 'all',
+  view: 'grid',
+  selectedFile: null
+};
+
+/* ================================================================
+   Find node by path
+   ================================================================ */
+function getNodeByPath(path) {
+  let node = KB;
+  for (const id of path) {
+    if (!node.children) return null;
+    node = node.children.find(c => c.id === id);
+    if (!node) return null;
+  }
+  return node;
+}
+
+/* ================================================================
+   Render: Sidebar Tree
+   ================================================================ */
+function renderTree() {
+  const tree = document.getElementById('tree');
+  tree.innerHTML = '';
+  KB.children.forEach(child => tree.appendChild(buildTreeNode(child, 0)));
+}
+
+function buildTreeNode(node, depth) {
+  const wrap = document.createElement('div');
+  wrap.className = 'tree-node';
+
+  const item = document.createElement('div');
+  item.className = 'tree-item';
+  item.dataset.id = node.id;
+
+  const isOpen = state.currentPath.includes(node.id);
+  const isActive = state.currentPath[state.currentPath.length - 1] === node.id;
+
+  if (node.type === 'folder') {
+    const chev = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    chev.setAttribute('class', 'chevron');
+    chev.setAttribute('viewBox', '0 0 24 24');
+    chev.setAttribute('fill', 'none');
+    chev.setAttribute('stroke', 'currentColor');
+    chev.setAttribute('stroke-width', '2');
+    chev.setAttribute('stroke-linecap', 'round');
+    chev.setAttribute('stroke-linejoin', 'round');
+    chev.innerHTML = '<polyline points="9 18 15 12 9 6"/>';
+    if (isOpen) item.classList.add('open');
+    item.appendChild(chev);
+
+    const icon = document.createElement('span');
+    icon.className = 'node-icon';
+    icon.innerHTML = folderIconSvg();
+    item.appendChild(icon);
+
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (isActive) {
+        // toggle open
+        const childrenEl = wrap.querySelector('.tree-children');
+        if (childrenEl) childrenEl.classList.toggle('open');
+        item.classList.toggle('open');
+      } else {
+        state.currentPath = getPathToNode(node.id);
+        render();
+      }
+    });
+  } else {
+    const spacer = document.createElement('span');
+    spacer.style.width = '14px';
+    spacer.style.flexShrink = '0';
+    item.appendChild(spacer);
+
+    const icon = document.createElement('span');
+    icon.className = 'node-icon';
+    icon.innerHTML = fileIconSvg(node.suffix);
+    item.appendChild(icon);
+
+    item.addEventListener('click', () => {
+      const filePath = getPathToFile(node.id);
+      if (filePath) {
+        state.currentPath = filePath.slice(0, -1);
+        render();
+        openPreview(node);
+      }
+    });
+  }
+
+  if (isActive) item.classList.add('active');
+
+  const label = document.createElement('span');
+  label.className = 'label';
+  label.textContent = node.name;
+  item.appendChild(label);
+
+  wrap.appendChild(item);
+
+  if (node.type === 'folder' && node.children) {
+    const children = document.createElement('div');
+    children.className = 'tree-children' + (isOpen ? ' open' : '');
+    node.children.forEach(c => children.appendChild(buildTreeNode(c, depth + 1)));
+    wrap.appendChild(children);
+  }
+  return wrap;
+}
+
+function getPathToNode(id, node = KB, path = []) {
+  if (node.id === id) return path;
+  if (!node.children) return null;
+  for (const c of node.children) {
+    const result = getPathToNode(id, c, [...path, c.id]);
+    if (result) return result;
+  }
+  return null;
+}
+function getPathToFile(id) { return getPathToNode(id); }
+
+/* ================================================================
+   Render: Breadcrumb
+   ================================================================ */
+function renderBreadcrumb() {
+  const bc = document.getElementById('breadcrumb');
+  bc.innerHTML = '';
+
+  const root = document.createElement('div');
+  root.className = 'crumb';
+  root.textContent = '玄关知识库';
+  root.addEventListener('click', () => { state.currentPath = []; render(); });
+  bc.appendChild(root);
+
+  let node = KB;
+  state.currentPath.forEach((id, idx) => {
+    const sep = document.createElement('span');
+    sep.className = 'crumb-sep';
+    sep.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>';
+    bc.appendChild(sep);
+
+    node = node.children.find(c => c.id === id);
+    const crumb = document.createElement('div');
+    crumb.className = 'crumb' + (idx === state.currentPath.length - 1 ? ' current' : '');
+    crumb.textContent = node.name;
+    if (idx < state.currentPath.length - 1) {
+      const pathTo = state.currentPath.slice(0, idx + 1);
+      crumb.addEventListener('click', () => { state.currentPath = pathTo; render(); });
+    }
+    bc.appendChild(crumb);
+  });
+}
+
+/* ================================================================
+   Render: Main content
+   ================================================================ */
+function renderMain() {
+  const content = document.getElementById('content');
+  const node = getNodeByPath(state.currentPath);
+
+  if (!node || node.type === 'file') {
+    state.currentPath = [];
+    return renderMain();
+  }
+
+  document.getElementById('mainTitle').textContent = node.name || '玄关知识库';
+  document.getElementById('mainSub').textContent = getSubText(node);
+
+  content.innerHTML = '';
+
+  // Filter children
+  const folders = (node.children || []).filter(c => c.type === 'folder');
+  let files = (node.children || []).filter(c => c.type === 'file');
+  if (state.currentFilter !== 'all') {
+    files = files.filter(f => getTypeInfo(f.suffix).category === state.currentFilter);
+  }
+
+  // Folders section
+  if (folders.length > 0 && state.currentFilter === 'all') {
+    const sec = document.createElement('div');
+    sec.innerHTML = `<div class="section-header"><h3>文件夹</h3><span class="count">${folders.length} 个</span></div>`;
+    if (state.view === 'grid') {
+      const grid = document.createElement('div');
+      grid.className = 'grid';
+      folders.forEach(f => grid.appendChild(folderCard(f)));
+      sec.appendChild(grid);
+    } else {
+      const list = document.createElement('div');
+      list.className = 'list';
+      list.appendChild(listHeader());
+      folders.forEach(f => list.appendChild(folderRow(f)));
+      sec.appendChild(list);
+    }
+    content.appendChild(sec);
+  }
+
+  // Files section
+  const filesSec = document.createElement('div');
+  filesSec.style.marginTop = '24px';
+  const filesLabel = state.currentFilter === 'all' ? '文件' : (state.currentFilter === 'doc' ? '文档' : state.currentFilter === 'image' ? '图片' : state.currentFilter === 'code' ? '代码' : '其他');
+  filesSec.innerHTML = `<div class="section-header"><h3>${filesLabel}</h3><span class="count">${files.length} 个</span></div>`;
+
+  if (files.length === 0) {
+    filesSec.innerHTML += `
+      <div class="empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+        <div class="empty-title">此文件夹下没有文件</div>
+        <div class="empty-sub">尝试切换筛选或上传新文件</div>
+      </div>`;
+  } else if (state.view === 'grid') {
+    const grid = document.createElement('div');
+    grid.className = 'grid';
+    files.forEach(f => grid.appendChild(fileCard(f)));
+    filesSec.appendChild(grid);
+  } else {
+    const list = document.createElement('div');
+    list.className = 'list';
+    if (state.currentFilter === 'all') list.appendChild(listHeader());
+    files.forEach(f => list.appendChild(fileRow(f)));
+    filesSec.appendChild(list);
+  }
+  content.appendChild(filesSec);
+}
+
+function getSubText(node) {
+  if (!node.children) return '';
+  const folders = node.children.filter(c => c.type === 'folder').length;
+  const files = node.children.filter(c => c.type === 'file').length;
+  const parts = [];
+  if (folders) parts.push(`${folders} 个文件夹`);
+  if (files) parts.push(`${files} 个文件`);
+  return parts.join(' · ');
+}
+
+function folderCard(folder) {
+  const card = document.createElement('div');
+  card.className = 'file-card';
+  card.innerHTML = `
+    <div class="file-thumb">
+      <div class="file-thumb-icon ft-folder">${folderIconSvg()}</div>
+    </div>
+    <div class="file-name">${folder.name}</div>
+    <div class="file-meta">${folder.children ? folder.children.length : 0} 项</div>
+  `;
+  card.addEventListener('click', () => {
+    state.currentPath = [...state.currentPath, folder.id];
+    render();
+  });
+  return card;
+}
+
+function fileCard(file) {
+  const t = getTypeInfo(file.suffix);
+  const card = document.createElement('div');
+  card.className = 'file-card';
+  card.dataset.id = file.id;
+  card.innerHTML = `
+    <div class="file-thumb">
+      <div class="file-thumb-icon ${t.cls}">${fileIconSvg(file.suffix)}</div>
+    </div>
+    <div class="file-name" title="${file.name}">${file.name}</div>
+    <div class="file-meta">
+      <span class="file-tag">${t.label}</span>
+      <span>${formatSize(file.size)}</span>
+    </div>
+    <div class="file-actions">
+      <button title="更多">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="1"/>
+          <circle cx="19" cy="12" r="1"/>
+          <circle cx="5" cy="12" r="1"/>
+        </svg>
+      </button>
+    </div>
+  `;
+  card.addEventListener('click', () => openPreview(file));
+  return card;
+}
+
+function listHeader() {
+  const row = document.createElement('div');
+  row.className = 'list-row header';
+  row.innerHTML = `
+    <div></div>
+    <div>名称</div>
+    <div>类型</div>
+    <div>大小</div>
+    <div>修改时间</div>
+    <div></div>
+  `;
+  return row;
+}
+function folderRow(folder) {
+  const row = document.createElement('div');
+  row.className = 'list-row';
+  row.innerHTML = `
+    <div class="row-icon ft-folder">${folderIconSvg()}</div>
+    <div class="row-name">${folder.name}</div>
+    <div class="row-meta">文件夹</div>
+    <div class="row-meta">${folder.children ? folder.children.length : 0} 项</div>
+    <div class="row-meta">—</div>
+    <div class="row-action">
+      <button title="打开">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 18 15 12 9 6"/>
+        </svg>
+      </button>
+    </div>
+  `;
+  row.addEventListener('click', () => {
+    state.currentPath = [...state.currentPath, folder.id];
+    render();
+  });
+  return row;
+}
+function fileRow(file) {
+  const t = getTypeInfo(file.suffix);
+  const row = document.createElement('div');
+  row.className = 'list-row';
+  row.innerHTML = `
+    <div class="row-icon ${t.cls}">${fileIconSvg(file.suffix)}</div>
+    <div class="row-name">${file.name}</div>
+    <div class="row-meta"><span class="file-tag">${t.label}</span></div>
+    <div class="row-meta">${formatSize(file.size)}</div>
+    <div class="row-meta">${file.updatedAt || '—'}</div>
+    <div class="row-action">
+      <button title="预览">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+      </button>
+    </div>
+  `;
+  row.addEventListener('click', () => openPreview(file));
+  return row;
+}
+
+/* ================================================================
+   Preview Panel
+   ================================================================ */
+function openPreview(file) {
+  state.selectedFile = file;
+  const t = getTypeInfo(file.suffix);
+
+  // Update header
+  const icon = document.getElementById('previewIcon');
+  icon.className = 'preview-icon ' + t.cls;
+  icon.innerHTML = fileIconSvg(file.suffix);
+
+  document.getElementById('previewName').textContent = file.name;
+  document.getElementById('previewType').textContent = t.typeName;
+  document.getElementById('previewSize').textContent = formatSize(file.size);
+  document.getElementById('previewDate').textContent = file.updatedAt || '—';
+
+  // Render body based on type
+  const body = document.getElementById('previewBody');
+  body.innerHTML = '';
+
+  if (['md', 'txt'].includes(file.suffix)) {
+    body.innerHTML = '<div class="md-render">' + renderMarkdown(mockMarkdown(file)) + '</div>';
+  } else if (['json', 'sh'].includes(file.suffix)) {
+    body.innerHTML = '<div class="code-render">' + highlightCode(file.suffix, mockCode(file)) + '</div>';
+  } else if (['png', 'jpg', 'svg'].includes(file.suffix)) {
+    body.innerHTML = `
+      <div class="img-render">
+        <div class="img-frame">
+          <div class="img-ph">${file.name}</div>
+        </div>
+      </div>`;
+  } else {
+    // Use iframe for preview-able files (docx, pdf, pptx, xlsx)
+    const iframe = document.createElement('iframe');
+    iframe.src = 'about:blank';
+    iframe.setAttribute('data-preview-url', `https://xg-cwork-web.mediportal.com.cn/p/${file.id}`);
+    body.appendChild(iframe);
+    // Mock preview content
+    setTimeout(() => {
+      const doc = iframe.contentDocument || iframe.contentWindow.document;
+      doc.open();
+      doc.write(`
+        <!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+        body { font-family: -apple-system, "PingFang SC", sans-serif; background: #F8F9FA; margin: 0; padding: 40px; color: #1F2937; }
+        .ph { max-width: 720px; margin: 40px auto; background: white; border-radius: 12px; padding: 60px 80px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
+        h1 { font-size: 28px; margin: 0 0 8px; }
+        .sub { color: #6B7280; font-size: 13px; margin-bottom: 32px; padding-bottom: 16px; border-bottom: 1px solid #E5E7EB; }
+        .toolbar { background: #F3F4F6; border-radius: 8px; padding: 12px 16px; font-size: 12px; color: #6B7280; margin-bottom: 24px; }
+        .placeholder { background: linear-gradient(135deg, ${t.cls === 'ft-pdf' ? '#FEE2E2' : t.cls === 'ft-pptx' ? '#FFEDD5' : t.cls === 'ft-xlsx' ? '#D1FAE5' : '#DBEAFE'}, white); border-radius: 8px; padding: 60px 40px; text-align: center; }
+        .badge { display: inline-block; padding: 4px 10px; background: ${t.cls === 'ft-pdf' ? '#EF4444' : t.cls === 'ft-pptx' ? '#F97316' : t.cls === 'ft-xlsx' ? '#10B981' : '#2563EB'}; color: white; border-radius: 6px; font-size: 11px; font-weight: 600; margin-bottom: 12px; }
+        .filename { font-size: 20px; font-weight: 600; margin: 12px 0; }
+        .meta { color: #6B7280; font-size: 13px; }
+        .lipsum { line-height: 1.8; color: #4B5563; text-align: left; margin-top: 32px; }
+        .lipsum p { margin: 12px 0; }
+        </style></head><body>
+        <div class="ph">
+          <div class="toolbar">🔒 知识库安全预览 · 仅供查看 · ${file.name}</div>
+          <div class="placeholder">
+            <span class="badge">${t.label}</span>
+            <div class="filename">${file.name}</div>
+            <div class="meta">${t.typeName} · ${formatSize(file.size)} · ${file.updatedAt || '—'}</div>
+            <div class="lipsum">
+              <p>这是由知识库预览服务渲染的文档区域。真实环境中将通过 <code>previewUrl</code> 嵌入完整的 ${t.typeName} 内容，支持翻页、搜索、缩放等交互。</p>
+              <p>文档内容由玄关开放平台统一管理，所有访问均经过 AppKey 鉴权，文件不会离开安全沙箱。</p>
+              <p>支持的文件类型包括：<strong>Word / PDF / PPT / Excel</strong>。点击右上角"下载"可获取原始文件到本地。</p>
+            </div>
+          </div>
+        </div>
+        </body></html>
+      `);
+      doc.close();
+    }, 100);
+  }
+
+  // Show panel
+  document.getElementById('previewPanel').classList.add('show');
+  document.getElementById('previewOverlay').classList.add('show');
+}
+
+function closePreview() {
+  document.getElementById('previewPanel').classList.remove('show');
+  document.getElementById('previewOverlay').classList.remove('show');
+  state.selectedFile = null;
+}
+
+document.getElementById('closePreviewBtn').addEventListener('click', closePreview);
+document.getElementById('previewOverlay').addEventListener('click', closePreview);
+document.getElementById('downloadBtn').addEventListener('click', () => {
+  if (state.selectedFile) showToast(`开始下载：${state.selectedFile.name}`);
+});
+document.getElementById('openNewBtn').addEventListener('click', () => {
+  if (state.selectedFile) showToast(`在新窗口打开：${state.selectedFile.name}`);
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closePreview();
+});
+
+/* ================================================================
+   Mock markdown / code content
+   ================================================================ */
+function mockMarkdown(file) {
+  if (file.id === 'tpr-readme') {
+    return `# TPR 方法论
+
+> Think → Probe → Review：一个面向复杂方案规划的标准化工作流。
+
+## 什么是 TPR？
+
+TPR（Think / Probe / Review）是一套**结构化的方案规划框架**，用于在面对复杂问题时：
+- **Think**：在认知层面拆解问题
+- **Probe**：通过外部探查验证假设
+- **Review**：对方案做严谨评审
+
+## 三个阶段
+
+### 1. Discovery
+收集问题背景、约束条件、利益相关方，形成初步问题陈述。
+
+### 2. GRV
+Generate → Review → Validate，循环迭代形成可执行方案。
+
+### 3. Battle
+通过对抗性推演（红蓝对抗）暴露方案弱点。
+
+## 核心代码
+
+\`\`\`bash
+tpr run --stage=discovery --topic="知识库浏览器"
+\`\`\`
+
+## 关联项目
+
+- TPR Bridge Protocol
+- Ralph Loop
+- 项目根目录模板
+
+---
+*最后更新：2026-06-19*
+`;
+  }
+  if (file.id === 'tpr-arch') {
+    return `# 架构设计
+
+## 整体架构
+
+系统由四层组成：
+
+1. **接入层** — API Gateway、AppKey 鉴权
+2. **服务层** — 元数据服务、下载服务、预览服务
+3. **存储层** — 玄关开放平台 + MinIO
+4. **前端层** — Web / Mobile / CLI
+
+## 关键技术决策
+
+| 决策点 | 选择 | 理由 |
+|--------|------|------|
+| 预览方案 | 知识库原生 previewUrl | 安全沙箱 |
+| 文件传输 | OSS 签名直链 | 性能 |
+| 鉴权 | AppKey + 短期 Token | 标准 |
+
+## 数据流
+
+\`\`\`
+User → AppKey → getDownloadInfo(fileId) → {previewUrl, downloadUrl} → Render
+\`\`\`
+`;
+  }
+  if (file.id === 'tpr-api') {
+    return `# API 规范
+
+## getDownloadInfo
+
+获取文件下载与预览信息。
+
+### 请求
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| fileId | string | 是 | 文件 ID |
+| forceDownload | boolean | 否 | 是否强制下载 |
+
+### 响应
+
+\`\`\`json
+{
+  "downloadUrl": "https://minio.../file.docx",
+  "previewUrl": "https://xg-cwork-web.mediportal.com.cn/p/xxx",
+  "fileName": "xxx.docx",
+  "suffix": "docx",
+  "size": 74694,
+  "openWith": 1
+}
+\`\`\`
+
+## 错误码
+
+- \`400\` 参数错误
+- \`401\` AppKey 无效
+- \`403\` 无权访问
+- \`404\` 文件不存在
+`;
+  }
+  if (file.id === 'notex-daily') {
+    return `# Daily · 2026-06-21
+
+## 今日 TODO
+
+- [x] 完成知识库浏览器原型
+- [ ] 提交 Code Review
+- [ ] 更新 WIKI
+
+## 想法
+
+今天和团队讨论了 **知识库 + 浏览器** 的结合点。核心价值在于：
+1. 减少在多个平台间切换
+2. 提供统一的预览体验
+3. 支持快速搜索与归档
+
+## 引用
+
+> "好的工具应该消失在任务背后。" — 某位不愿透露姓名的产品经理
+`;
+  }
+  return `# ${file.name}
+
+这是一个 Markdown 文档的预览示例。
+
+## 段落
+
+正文内容将在这里渲染。**粗体**、*斜体*、\`行内代码\`，以及 [链接](#)。
+
+## 列表
+
+- 项目 1
+- 项目 2
+- 项目 3
+
+## 引用
+
+> 重要的内容用引用块呈现。
+
+---
+
+*由玄关知识库浏览器渲染*
+`;
+}
+
+function mockCode(file) {
+  if (file.suffix === 'sh') {
+    return `#!/usr/bin/env bash
+# Deploy script for knowledge base explorer
+set -euo pipefail
+
+ENV="\${1:-production}"
+APPKEY="\${XGKB_APPKEY:?APPKEY is required}"
+
+echo "🚀 Deploying to \$ENV..."
+
+# Pull latest image
+docker pull xgkb/explorer:latest
+
+# Restart service
+docker compose down
+docker compose up -d
+
+# Health check
+sleep 5
+curl -f http://localhost:3000/health || {
+  echo "❌ Health check failed"
+  exit 1
+}
+
+echo "✅ Deploy complete"`;
+  }
+  if (file.suffix === 'json') {
+    return `{
+  "appKey": "ak_xxx_hidden_xxx",
+  "endpoint": "https://xg-cwork-web.mediportal.com.cn",
+  "apiVersion": "v1",
+  "timeout": 30000,
+  "retry": {
+    "maxAttempts": 3,
+    "backoff": "exponential"
+  },
+  "cache": {
+    "ttl": 3600,
+    "maxSize": "100MB"
+  },
+  "features": {
+    "preview": true,
+    "download": true,
+    "search": true,
+    "aiSummary": false
+  }
+}`;
+  }
+  return `// ${file.name}\nconsole.log("hello world");`;
+}
+
+/* Simple syntax highlighter */
+function escapeHtml(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function highlightCode(lang, code) {
+  let s = escapeHtml(code);
+  if (lang === 'sh') {
+    s = s.replace(/(#.*)/g, '<span class="c">$1</span>');
+    s = s.replace(/("\$?[^"]*")/g, '<span class="s">$1</span>');
+    s = s.replace(/\b(if|then|else|fi|do|done|for|in|while|echo|exit|set)\b/g, '<span class="k">$1</span>');
+    s = s.replace(/(\$\w+)/g, '<span class="n">$1</span>');
+  } else if (lang === 'json') {
+    s = s.replace(/("(?:[^"\\]|\\.)*")(\s*:)/g, '<span class="k">$1</span>$2');
+    s = s.replace(/:\s*("(?:[^"\\]|\\.)*")/g, ': <span class="s">$1</span>');
+    s = s.replace(/\b(true|false|null)\b/g, '<span class="n">$1</span>');
+  }
+  return s;
+}
+
+/* Simple markdown renderer */
+function renderMarkdown(md) {
+  let html = escapeHtml(md);
+  // Code blocks
+  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (m, lang, code) =>
+    `<pre><code>${code}</code></pre>`);
+  // Headings
+  html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+  html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+  html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+  // Bold / italic
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  // Inline code
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+  // Links
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+  // Blockquotes
+  html = html.replace(/^&gt; (.*$)/gim, '<blockquote>$1</blockquote>');
+  // HR
+  html = html.replace(/^---$/gim, '<hr>');
+  // Tables (simple)
+  html = html.replace(/((?:\|.+\|\n)+)/g, (m) => {
+    const rows = m.trim().split('\n');
+    if (rows.length < 2) return m;
+    const head = rows[0].split('|').slice(1, -1).map(c => `<th>${c.trim()}</th>`).join('');
+    const body = rows.slice(2).map(r => {
+      const cells = r.split('|').slice(1, -1).map(c => `<td>${c.trim()}</td>`).join('');
+      return `<tr>${cells}</tr>`;
+    }).join('');
+    return `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+  });
+  // Lists
+  html = html.replace(/(?:^- .+(?:\n|$))+?/gim, (m) => {
+    const items = m.trim().split('\n').map(l => `<li>${l.replace(/^- /, '')}</li>`).join('');
+    return `<ul>${items}</ul>`;
+  });
+  // Checkboxes
+  html = html.replace(/<li>\[ \] (.+?)<\/li>/g, '<li><input type="checkbox" disabled> $1</li>');
+  html = html.replace(/<li>\[x\] (.+?)<\/li>/g, '<li><input type="checkbox" checked disabled> $1</li>');
+  // Paragraphs
+  html = html.split(/\n\n+/).map(p => {
+    if (/^<(h\d|ul|ol|pre|blockquote|hr|table)/.test(p.trim())) return p;
+    return p.trim() ? `<p>${p.replace(/\n/g, '<br>')}</p>` : '';
+  }).join('\n');
+  return html;
+}
+
+/* ================================================================
+   Search
+   ================================================================ */
+const searchInput = document.getElementById('searchInput');
+const searchDropdown = document.getElementById('searchDropdown');
+searchInput.addEventListener('input', (e) => {
+  const q = e.target.value.trim().toLowerCase();
+  if (!q) { searchDropdown.classList.remove('show'); return; }
+  const results = ALL_FILES.filter(f => f.name.toLowerCase().includes(q) || f.path.some(p => p.toLowerCase().includes(q))).slice(0, 8);
+  if (results.length === 0) {
+    searchDropdown.innerHTML = '<div style="padding: 20px; text-align: center; color: #9CA3AF; font-size: 13px;">没有匹配的文件</div>';
+  } else {
+    searchDropdown.innerHTML = results.map(f => {
+      const t = getTypeInfo(f.suffix);
+      return `<div class="search-result" data-id="${f.id}">
+        <span style="width:24px;height:24px;border-radius:5px;display:grid;place-items:center;color:white;" class="${t.cls}">
+          ${fileIconSvg(f.suffix)}
+        </span>
+        <div style="min-width:0;">
+          <div style="font-size:13px;color:#1F2937;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${f.name}</div>
+          <div style="font-size:11px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${f.path.slice(0, -1).join(' / ')}</div>
+        </div>
+        <span class="search-result-meta">${t.label}</span>
+      </div>`;
+    }).join('');
+    searchDropdown.querySelectorAll('.search-result').forEach(el => {
+      el.addEventListener('click', () => {
+        const id = el.dataset.id;
+        const file = ALL_FILES.find(f => f.id === id);
+        if (file) {
+          const filePath = getPathToFile(id);
+          state.currentPath = filePath.slice(0, -1);
+          searchDropdown.classList.remove('show');
+          searchInput.value = '';
+          render();
+          openPreview(file);
+        }
+      });
+    });
+  }
+  searchDropdown.classList.add('show');
+});
+searchInput.addEventListener('blur', () => {
+  setTimeout(() => searchDropdown.classList.remove('show'), 200);
+});
+searchInput.addEventListener('focus', (e) => {
+  if (e.target.value.trim()) searchInput.dispatchEvent(new Event('input'));
+});
+
+/* ================================================================
+   Filter & View
+   ================================================================ */
+document.getElementById('filterTabs').addEventListener('click', (e) => {
+  const tab = e.target.closest('.filter-tab');
+  if (!tab) return;
+  document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+  state.currentFilter = tab.dataset.filter;
+  renderMain();
+});
+
+document.getElementById('viewToggle').addEventListener('click', (e) => {
+  const btn = e.target.closest('.view-btn');
+  if (!btn) return;
+  document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.view = btn.dataset.view;
+  renderMain();
+});
+
+/* ================================================================
+   Toast
+   ================================================================ */
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+/* ================================================================
+   Initial Render
+   ================================================================ */
+function render() {
+  renderTree();
+  renderBreadcrumb();
+  renderMain();
+}
+state.currentPath = ['tpr'];
+render();
+</script>
+
+</body>
+</html>
