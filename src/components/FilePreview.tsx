@@ -10,7 +10,7 @@ import remarkGfm from 'remark-gfm';
 import mermaid from 'mermaid';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { FileText, AlertCircle, Image as ImageIcon, Eye, Code2 } from 'lucide-react';
+import { FileText, AlertCircle, Image as ImageIcon, Eye, Code2, Copy, Check } from 'lucide-react';
 import type { KbApiClient } from '../lib/api';
 
 interface FilePreviewProps {
@@ -63,36 +63,60 @@ function MermaidChart({ code }: { code: string }) {
   return <div ref={ref} className="my-4 flex justify-center overflow-x-auto" />;
 }
 
+// ── 代码块组件（带复制按钮）────────────────────────────────────────────────────
+
+function CodeBlock({ language, code }: { language: string; code: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  const displayLang = language && language !== 'text' ? language : null;
+  const prismLang = language ? (LANG_MAP[language] || language) : 'text';
+
+  return (
+    <div style={{ margin: '16px 0', border: '1px solid #E8E8E3', borderRadius: 10, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F0EFE9', borderBottom: '1px solid #E8E8E3', padding: '4px 8px 4px 14px' }}>
+        <span style={{ fontSize: 11, color: '#9CA3AF', fontFamily: 'monospace', letterSpacing: '0.04em' }}>
+          {displayLang || 'text'}
+        </span>
+        <button
+          onClick={handleCopy}
+          style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 6, border: 'none', background: 'none', cursor: 'pointer', fontSize: 11, color: copied ? '#16A34A' : '#9CA3AF' }}
+        >
+          {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+          {copied ? '已复制' : '复制'}
+        </button>
+      </div>
+      <SyntaxHighlighter
+        style={oneLight as any}
+        language={prismLang}
+        PreTag="div"
+        customStyle={{ margin: 0, borderRadius: 0, fontSize: 13, lineHeight: 1.6, padding: '14px 18px', background: '#F6F8FA', overflowX: 'auto' }}
+      >
+        {code}
+      </SyntaxHighlighter>
+    </div>
+  );
+}
+
 // ── 共用 Markdown 组件配置 ────────────────────────────────────────────────────
 
 const mdComponents = {
-  code(props: { className?: string; children?: React.ReactNode }) {
-    const { className, children } = props;
-    const match = /language-(\w+)/.exec(className || '');
-    const language = match ? match[1] : '';
-    if (language === 'mermaid') {
-      return <MermaidChart code={String(children).replace(/\n$/, '')} />;
-    }
-    if (language) {
-      const displayLang = language !== 'text' ? language : null;
-      return (
-        <div style={{ margin: '16px 0', border: '1px solid #E8E8E3', borderRadius: 10, overflow: 'hidden' }}>
-          {displayLang && (
-            <div style={{ display: 'flex', alignItems: 'center', background: '#F0EFE9', borderBottom: '1px solid #E8E8E3', padding: '4px 14px' }}>
-              <span style={{ fontSize: 11, color: '#9CA3AF', fontFamily: 'monospace', letterSpacing: '0.04em' }}>{displayLang}</span>
-            </div>
-          )}
-          <SyntaxHighlighter
-            style={oneLight as any}
-            language={LANG_MAP[language] || language}
-            PreTag="div"
-            customStyle={{ margin: 0, borderRadius: 0, fontSize: 13, lineHeight: 1.6, padding: '14px 18px', background: '#F6F8FA', overflowX: 'auto' }}
-          >
-            {String(children).replace(/\n$/, '')}
-          </SyntaxHighlighter>
-        </div>
-      );
-    }
+  // pre intercepts all fenced code blocks; code only handles inline code
+  pre({ children }: { children?: React.ReactNode }) {
+    const child = children as React.ReactElement<{ className?: string; children?: React.ReactNode }>;
+    const className = child?.props?.className || '';
+    const match = /language-(\w+)/.exec(className);
+    const language = match?.[1] || '';
+    const code = String(child?.props?.children || '').replace(/\n$/, '');
+    if (language === 'mermaid') return <MermaidChart code={code} />;
+    return <CodeBlock language={language} code={code} />;
+  },
+  code({ children }: { children?: React.ReactNode }) {
     return (
       <code style={{ background: '#F0EFE9', borderRadius: 4, padding: '2px 6px', fontSize: '0.875em', fontFamily: 'monospace', color: '#374151' }}>
         {children}
@@ -123,7 +147,7 @@ const mdComponents = {
   },
 };
 
-const PROSE_CLASS = 'prose prose-sm max-w-none prose-headings:font-semibold prose-headings:border-b prose-headings:pb-2 prose-headings:border-gray-200 prose-a:text-blue-600 prose-code:bg-gray-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-pink-600 prose-pre:bg-gray-900 prose-pre:text-gray-100 px-8 py-6';
+const PROSE_CLASS = 'prose prose-sm max-w-none prose-headings:font-semibold prose-headings:border-b prose-headings:pb-2 prose-headings:border-gray-200 prose-a:text-blue-600 px-8 py-6';
 
 function MarkdownView({ content }: { content: string }) {
   return (
