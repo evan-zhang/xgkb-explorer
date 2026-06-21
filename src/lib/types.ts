@@ -53,6 +53,11 @@ export interface BatchGetContentItem {
   content?: string;
 }
 
+// 文档预览凭证
+export interface PreviewTicketVO {
+  previewUrl: string;
+}
+
 // API 路径常量
 export const API_PATHS = {
   getChildFiles: 'document-database/file/getChildFiles',
@@ -64,6 +69,7 @@ export const API_PATHS = {
   getPersonalProjectId: 'document-database/project/personal/getProjectId',
   searchFile: 'document-database/file/searchFile',
   listDescendantFiles: 'document-database/file/listDescendantFiles',
+  getPreviewTicket: 'doc-preview/api/preview/ticket',
 } as const;
 
 // 默认服务器地址

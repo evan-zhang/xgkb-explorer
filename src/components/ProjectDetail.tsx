@@ -25,28 +25,11 @@ export function ProjectDetail({ client, projectId, project, onBack }: ProjectDet
   const [breadcrumb, setBreadcrumb] = useState<BreadcrumbItem[]>([
     { id: rootId, name: project.name },
   ]);
-
   const [modalFile, setModalFile] = useState<FileListItem | null>(null);
-  const [modalContent, setModalContent] = useState<string | null>(null);
-  const [modalLoading, setModalLoading] = useState(false);
-  const [modalError, setModalError] = useState<string | null>(null);
 
-  const openFile = useCallback(async (file: FileListItem) => {
+  const openFile = useCallback((file: FileListItem) => {
     setModalFile(file);
-    setModalContent(null);
-    setModalError(null);
-    setModalLoading(false);
-
-    const suffix = file.name.split('.').pop()?.toLowerCase() || '';
-    const isImage = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico'].includes(suffix);
-    if (!isImage) {
-      setModalLoading(true);
-      const result = await client.getFullFileContent(String(file.id));
-      if (result.ok) setModalContent(result.value);
-      else setModalError(result.error);
-      setModalLoading(false);
-    }
-  }, [client]);
+  }, []);
 
   const handleFolderNavigate = useCallback((folder: FileListItem) => {
     setCurrentFolderId(String(folder.id));
@@ -100,7 +83,7 @@ export function ProjectDetail({ client, projectId, project, onBack }: ProjectDet
         </div>
       </aside>
 
-      {/* 右侧：文件/夹卡片网格（始终可见） */}
+      {/* 右侧：文件/夹卡片网格 */}
       <section className="flex-1 overflow-hidden flex flex-col min-w-0">
         {/* 面包屑 */}
         <div
@@ -139,14 +122,11 @@ export function ProjectDetail({ client, projectId, project, onBack }: ProjectDet
         </div>
       </section>
 
-      {/* 文件内容图层（全屏 modal） */}
+      {/* 文件预览图层 */}
       {modalFile && (
         <FileViewerModal
           client={client}
           file={modalFile}
-          content={modalContent}
-          isLoading={modalLoading}
-          error={modalError}
           onClose={() => setModalFile(null)}
         />
       )}
