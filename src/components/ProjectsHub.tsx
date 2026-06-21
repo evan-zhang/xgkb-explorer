@@ -2,11 +2,13 @@
  * 项目看板：展示 projectsPath 目录下的所有项目文件夹（卡片网格）
  */
 
-import { useCallback } from 'react';
-import { Folder, RefreshCw, AlertCircle, Clock } from 'lucide-react';
+import { useCallback, useState, useEffect } from 'react';
+import { Folder, RefreshCw, AlertCircle, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { KbApiClient } from '../lib/api';
 import type { FileListItem } from '../lib/types';
 import { useReadmePreview } from '../lib/hooks';
+
+const PAGE_SIZE = 12;
 
 interface ProjectCardProps {
   project: FileListItem;
@@ -67,6 +69,19 @@ interface ProjectsHubProps {
 
 export function ProjectsHub({ client, projects, isLoading, error, onSelectProject, onReload }: ProjectsHubProps) {
   const handleReload = useCallback(() => onReload(), [onReload]);
+  const [page, setPage] = useState(1);
+
+  useEffect(() => { setPage(1); }, [projects]);
+
+  const sorted = [...projects].sort((a, b) => {
+    if (!a.updateTime && !b.updateTime) return 0;
+    if (!a.updateTime) return 1;
+    if (!b.updateTime) return -1;
+    return b.updateTime - a.updateTime;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const paged = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   if (isLoading) {
     return (
@@ -132,16 +147,40 @@ export function ProjectsHub({ client, projects, isLoading, error, onSelectProjec
           <p>该目录下没有项目</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {projects.map((project) => (
-            <ProjectCard
-              key={String(project.id)}
-              project={project}
-              client={client}
-              onClick={() => onSelectProject(project)}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {paged.map((project) => (
+              <ProjectCard
+                key={String(project.id)}
+                project={project}
+                client={client}
+                onClick={() => onSelectProject(project)}
+              />
+            ))}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-4 mt-8">
+              <button
+                onClick={() => setPage((p) => p - 1)}
+                disabled={page === 1}
+                className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors disabled:opacity-30 disabled:pointer-events-none"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                上一页
+              </button>
+              <span className="text-sm text-gray-400">第 {page} / {totalPages} 页</span>
+              <button
+                onClick={() => setPage((p) => p + 1)}
+                disabled={page === totalPages}
+                className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors disabled:opacity-30 disabled:pointer-events-none"
+              >
+                下一页
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
