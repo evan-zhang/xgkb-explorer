@@ -16,9 +16,11 @@ interface FileTreeProps {
   onFolderSelect?: (folder: FileListItem, path: string) => void;
   /** 若传入，则以此 fileId 作为根节点（跳过 getLevel1Folders） */
   rootFileId?: string;
+  /** 为 true 时只渲染文件夹节点，隐藏文件 */
+  foldersOnly?: boolean;
 }
 
-export function FileTree({ client, projectId, onFileSelect, onFolderSelect, rootFileId }: FileTreeProps) {
+export function FileTree({ client, projectId, onFileSelect, onFolderSelect, rootFileId, foldersOnly }: FileTreeProps) {
   const { rootFiles, expandedFolders, isLoading, error, loadRootFiles, loadChildFiles, toggleFolder } =
     useFileTree(client);
 
@@ -129,7 +131,9 @@ export function FileTree({ client, projectId, onFileSelect, onFolderSelect, root
         {/* 递归渲染子节点 */}
         {isExpanded && children.length > 0 && (
           <div>
-            {children.map((child) => renderTreeNode(child, level + 1, currentPath))}
+            {(foldersOnly ? children.filter((c) => c.type === 1) : children).map((child) =>
+              renderTreeNode(child, level + 1, currentPath)
+            )}
           </div>
         )}
       </div>
@@ -170,9 +174,13 @@ export function FileTree({ client, projectId, onFileSelect, onFolderSelect, root
     );
   }
 
+  const displayRootFiles = foldersOnly
+    ? effectiveRootFiles.filter((f) => f.type === 1)
+    : effectiveRootFiles;
+
   return (
     <div className="h-full overflow-y-auto">
-      {effectiveRootFiles.map((file) => renderTreeNode(file))}
+      {displayRootFiles.map((file) => renderTreeNode(file))}
     </div>
   );
 }
