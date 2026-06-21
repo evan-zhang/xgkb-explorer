@@ -116,6 +116,7 @@ export function ProjectDetail({ client, projectId, project, onBack }: ProjectDet
           <FileExplorer
             client={client}
             folderId={currentFolderId}
+            projectId={projectId}
             onFileSelect={openFile}
             onFolderNavigate={handleFolderNavigate}
           />

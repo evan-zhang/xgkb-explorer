@@ -11,6 +11,12 @@ interface FileViewerModalProps {
   onClose: () => void;
 }
 
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico'];
 const HTML_EXTS = ['html', 'htm'];
 const MD_EXTS = ['md', 'markdown', 'mdown', 'mkd'];
@@ -170,12 +176,21 @@ export function FileViewerModal({ client, file, onClose }: FileViewerModalProps)
         className="flex items-center justify-between px-8 py-3 border-b flex-shrink-0"
         style={{ background: '#F5F3EE', borderColor: '#ECECE6' }}
       >
-        <span
-          className="text-sm font-medium truncate"
-          style={{ fontFamily: 'Georgia, "Noto Serif SC", serif', color: '#1A1A1A' }}
-        >{file.name}</span>
+        <div className="min-w-0 flex-1 mr-4">
+          <p className="text-sm font-medium truncate" style={{ fontFamily: 'Georgia, "Noto Serif SC", serif', color: '#1A1A1A' }}>{file.name}</p>
+          {(file.size || file.updateTime) && (
+            <p className="text-[11px] mt-0.5" style={{ color: '#9CA3AF' }}>
+              {[
+                file.size ? formatSize(file.size) : null,
+                file.updateTime
+                  ? new Date(file.updateTime).toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' })
+                  : null,
+              ].filter(Boolean).join(' · ')}
+            </p>
+          )}
+        </div>
 
-        <div className="flex items-center gap-1 flex-shrink-0 ml-4">
+        <div className="flex items-center gap-1 flex-shrink-0">
           <button
             onClick={copyKbLink}
             title="复制 KB 预览链接"

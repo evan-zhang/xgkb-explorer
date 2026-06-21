@@ -7,6 +7,7 @@ import { ContextMenu } from './ContextMenu';
 interface FileExplorerProps {
   client: KbApiClient;
   folderId: string;
+  projectId?: string;
   onFileSelect: (file: FileListItem) => void;
   onFolderNavigate: (folder: FileListItem) => void;
 }
@@ -120,7 +121,7 @@ function ExplorerCard({ item, onClick, onContextMenu }: ExplorerCardProps) {
   );
 }
 
-export function FileExplorer({ client, folderId, onFileSelect, onFolderNavigate }: FileExplorerProps) {
+export function FileExplorer({ client, folderId, projectId, onFileSelect, onFolderNavigate }: FileExplorerProps) {
   const [files, setFiles] = useState<FileListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -166,22 +167,41 @@ export function FileExplorer({ client, folderId, onFileSelect, onFolderNavigate 
     let cancelled = false;
     setIsLoading(true);
     setError(null);
-    client.getChildFiles(folderId).then((result) => {
+
+    const load = async () => {
+      const result = await client.getChildFiles(folderId);
       if (cancelled) return;
-      if (result.ok) {
-        const sorted = [...result.value].sort((a, b) => {
-          if (a.type === 1 && b.type !== 1) return -1;
-          if (a.type !== 1 && b.type === 1) return 1;
-          return 0;
-        });
-        setFiles(sorted);
-      } else {
+
+      if (!result.ok) {
         setError(result.error);
+        setIsLoading(false);
+        return;
       }
+
+      const sorted = [...result.value].sort((a, b) => {
+        if (a.type === 1 && b.type !== 1) return -1;
+        if (a.type !== 1 && b.type === 1) return 1;
+        return 0;
+      });
+      setFiles(sorted);
       setIsLoading(false);
-    });
+
+      // Enrich files with updateTime via batchGetMeta (getChildFiles doesn't include it)
+      const fileIds = sorted.filter(f => f.type !== 1).map(f => String(f.id));
+      if (fileIds.length === 0) return;
+      const metaResult = await client.batchGetMeta(fileIds, projectId);
+      if (cancelled || !metaResult.ok) return;
+      const metaMap = new Map(metaResult.value.map(m => [String(m.fileId), m]));
+      setFiles(prev => prev.map(f => {
+        const meta = metaMap.get(String(f.id));
+        if (!meta?.updateTime) return f;
+        return { ...f, updateTime: meta.updateTime };
+      }));
+    };
+
+    load();
     return () => { cancelled = true; };
-  }, [client, folderId]);
+  }, [client, folderId, projectId]);
 
   if (isLoading) {
     return (
