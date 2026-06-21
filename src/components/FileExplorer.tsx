@@ -11,6 +11,12 @@ interface FileExplorerProps {
   onFolderNavigate: (folder: FileListItem) => void;
 }
 
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function getFileIconColor(suffix: string): string {
   if (['md', 'markdown', 'mdown', 'mkd'].includes(suffix)) return 'text-blue-500';
   if (['js', 'jsx', 'ts', 'tsx', 'json'].includes(suffix)) return 'text-yellow-500';
@@ -99,11 +105,21 @@ function ExplorerCard({ item, onClick, onContextMenu }: ExplorerCardProps) {
         {item.name}
       </p>
 
-      <div className="flex flex-col items-center gap-0.5 mt-auto">
-        {!isFolder && suffix && (
-          <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: '#C0C0B8' }}>
-            {suffix}
-          </span>
+      <div className="flex flex-col items-center gap-0.5 mt-auto w-full">
+        {!isFolder && (
+          <div className="flex items-center gap-1 justify-center flex-wrap">
+            {suffix && (
+              <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: '#C0C0B8' }}>
+                {suffix}
+              </span>
+            )}
+            {suffix && item.size ? (
+              <span style={{ fontSize: 9, color: '#D4D4CC' }}>·</span>
+            ) : null}
+            {item.size ? (
+              <span className="text-[10px]" style={{ color: '#C0C0B8' }}>{formatSize(item.size)}</span>
+            ) : null}
+          </div>
         )}
         {updateDate && (
           <span className="text-[10px]" style={{ color: '#C0C0B8' }}>{updateDate}</span>
