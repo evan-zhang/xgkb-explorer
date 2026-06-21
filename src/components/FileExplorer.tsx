@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
-import { Folder, FileText } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Folder, FileText, ExternalLink, Link, Check } from 'lucide-react';
 import type { KbApiClient } from '../lib/api';
 import type { FileListItem } from '../lib/types';
+import { ContextMenu } from './ContextMenu';
 
 interface FileExplorerProps {
   client: KbApiClient;
@@ -19,16 +20,62 @@ function getFileIconColor(suffix: string): string {
   return 'text-gray-400';
 }
 
-function ExplorerCard({ item, onClick }: { item: FileListItem; onClick: () => void }) {
+interface ExplorerCardProps {
+  item: FileListItem;
+  onClick: () => void;
+  onContextMenu?: (item: FileListItem, x: number, y: number) => void;
+}
+
+function ExplorerCard({ item, onClick, onContextMenu }: ExplorerCardProps) {
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const moved = useRef(false);
+  const longPressTriggered = useRef(false);
+
   const isFolder = item.type === 1;
   const suffix = isFolder ? '' : (item.name.split('.').pop()?.toLowerCase() || '');
   const updateDate = item.updateTime
     ? new Date(item.updateTime).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
     : null;
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    moved.current = false;
+    longPressTriggered.current = false;
+    if (isFolder) return;
+    const t = e.touches[0];
+    timerRef.current = setTimeout(() => {
+      if (!moved.current) {
+        longPressTriggered.current = true;
+        onContextMenu?.(item, t.clientX, t.clientY);
+      }
+    }, 500);
+  };
+
+  const handleTouchMove = () => { moved.current = true; };
+
+  const handleTouchEnd = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+  };
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!isFolder) onContextMenu?.(item, e.clientX, e.clientY);
+  };
+
+  const handleClick = () => {
+    if (longPressTriggered.current) {
+      longPressTriggered.current = false;
+      return;
+    }
+    onClick();
+  };
+
   return (
     <div
-      onClick={onClick}
+      onClick={handleClick}
+      onContextMenu={handleContextMenu}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
       className="group flex flex-col items-center gap-2 p-3 rounded-xl cursor-pointer
         transition-all duration-150 select-none
         bg-white border border-[#ECECE6]
@@ -70,6 +117,43 @@ export function FileExplorer({ client, folderId, onFileSelect, onFolderNavigate 
   const [files, setFiles] = useState<FileListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [menu, setMenu] = useState<{ item: FileListItem; x: number; y: number } | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToast(null), 2000);
+  }, []);
+
+  const handleContextMenu = useCallback((item: FileListItem, x: number, y: number) => {
+    setMenu({ item, x, y });
+  }, []);
+
+  const menuItems = menu ? [
+    {
+      label: '在新标签页打开',
+      icon: <ExternalLink className="w-4 h-4" />,
+      onClick: async () => {
+        const r = await client.getDownloadInfo(String(menu.item.id), false);
+        if (r.ok && r.value.downloadUrl) window.open(r.value.downloadUrl, '_blank', 'noopener,noreferrer');
+        setMenu(null);
+      },
+    },
+    {
+      label: '复制文件链接',
+      icon: <Link className="w-4 h-4" />,
+      onClick: async () => {
+        const r = await client.getDownloadInfo(String(menu.item.id), false);
+        if (r.ok && r.value.downloadUrl) {
+          await navigator.clipboard.writeText(r.value.downloadUrl);
+          showToast('链接已复制');
+        }
+        setMenu(null);
+      },
+    },
+  ] : [];
 
   useEffect(() => {
     let cancelled = false;
@@ -117,14 +201,41 @@ export function FileExplorer({ client, folderId, onFileSelect, onFolderNavigate 
   }
 
   return (
-    <div className="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-      {files.map((file) => (
-        <ExplorerCard
-          key={String(file.id)}
-          item={file}
-          onClick={() => (file.type === 1 ? onFolderNavigate(file) : onFileSelect(file))}
+    <>
+      <div className="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+        {files.map((file) => (
+          <ExplorerCard
+            key={String(file.id)}
+            item={file}
+            onClick={() => (file.type === 1 ? onFolderNavigate(file) : onFileSelect(file))}
+            onContextMenu={handleContextMenu}
+          />
+        ))}
+      </div>
+
+      {menu && (
+        <ContextMenu
+          x={menu.x}
+          y={menu.y}
+          items={menuItems}
+          onClose={() => setMenu(null)}
         />
-      ))}
-    </div>
+      )}
+
+      {toast && (
+        <div
+          style={{
+            position: 'fixed', bottom: 24, right: 24, zIndex: 9999,
+            background: '#1A1A1A', color: '#FFFFFF',
+            padding: '10px 16px', borderRadius: 10, fontSize: 13,
+            display: 'flex', alignItems: 'center', gap: 8,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+          }}
+        >
+          <Check className="w-4 h-4" style={{ color: '#4ADE80' }} />
+          {toast}
+        </div>
+      )}
+    </>
   );
 }
