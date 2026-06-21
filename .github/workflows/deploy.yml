@@ -39,7 +39,7 @@ jobs:
           target: "/tmp/xgkb-deploy"
           strip_components: 1
 
-      - name: Move files & configure nginx
+      - name: Deploy & configure nginx SPA routing
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: 89.34.227.182
@@ -49,39 +49,61 @@ jobs:
           script: |
             set -e
 
-            # Find the directory that currently serves /xgkb/
+            # ---- 1. Find deploy directory ----
             XGKB_DIR=$(find /var/www /srv /home /opt -maxdepth 6 -name "prototype-v2.html" 2>/dev/null | head -1 | xargs -I{} dirname {} 2>/dev/null)
-            if [ -z "$XGKB_DIR" ]; then
-              XGKB_DIR="/var/www/html/xgkb"
-              mkdir -p "$XGKB_DIR"
-            fi
-            echo ">>> Deploying to: $XGKB_DIR"
+            [ -z "$XGKB_DIR" ] && XGKB_DIR="/var/www/xgkb-explorer"
+            echo ">>> Deploy dir: $XGKB_DIR"
 
-            # Backup old files
-            cp -r "$XGKB_DIR" "${XGKB_DIR}.bak.$(date +%Y%m%d%H%M%S)" 2>/dev/null || true
-
-            # Copy new files
+            # ---- 2. Copy new build ----
             cp -r /tmp/xgkb-deploy/* "$XGKB_DIR/"
             rm -rf /tmp/xgkb-deploy
+            echo ">>> Files deployed."
 
-            echo ">>> Deploy dir contents:"
-            ls -la "$XGKB_DIR/" | head -20
+            # ---- 3. Diagnose nginx / caddy / other proxy ----
+            echo "=== All web server configs ==="
+            # nginx site configs
+            find /etc/nginx /etc/caddy /etc/apache2 -type f 2>/dev/null | head -30
+            echo "=== nginx sites-enabled ==="
+            ls -la /etc/nginx/sites-enabled/ 2>/dev/null || echo "(none)"
+            echo "=== nginx sites-available ==="
+            ls -la /etc/nginx/sites-available/ 2>/dev/null || echo "(none)"
+            echo "=== nginx conf.d ==="
+            ls -la /etc/nginx/conf.d/ 2>/dev/null || echo "(none)"
+            echo "=== Docker containers ==="
+            docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Ports}}' 2>/dev/null || echo "(no docker)"
+            echo "=== Listening ports ==="
+            ss -tlnp | grep -E ':80|:443|:8080|:3000'
+            echo "=== Caddy config ==="
+            cat /etc/caddy/Caddyfile 2>/dev/null || echo "(no Caddyfile)"
 
-            # Update nginx: ensure SPA routing for /xgkb/
-            NGINX_SITE="/etc/nginx/sites-available/xgkb"
-            if [ ! -f "$NGINX_SITE" ]; then
-              # No dedicated config – try to find and patch existing config
-              NGINX_SITE=$(grep -rl "tpr.20100706.xyz" /etc/nginx/ 2>/dev/null | head -1)
-            fi
+            # ---- 4. Try to find and update the config that serves /xgkb/ ----
+            # Search all nginx config files for the root path that serves xgkb-explorer
+            CONFIG_WITH_XGKB=$(grep -rl "xgkb" /etc/nginx/ 2>/dev/null | head -1)
+            echo "=== Config referencing xgkb: $CONFIG_WITH_XGKB ==="
+            [ -n "$CONFIG_WITH_XGKB" ] && cat "$CONFIG_WITH_XGKB"
 
-            if [ -n "$NGINX_SITE" ]; then
-              echo ">>> Found nginx config: $NGINX_SITE"
-              # Patch: ensure /xgkb/ location uses try_files for SPA
-              # If the location block doesn't have try_files already, reload is enough
-              nginx -t && systemctl reload nginx
-              echo ">>> Nginx reloaded"
+            # Search all nginx config files for tpr or 20100706
+            CONFIG_DOMAIN=$(grep -rl "20100706" /etc/nginx/ 2>/dev/null | head -1)
+            echo "=== Config referencing 20100706: $CONFIG_DOMAIN ==="
+            [ -n "$CONFIG_DOMAIN" ] && cat "$CONFIG_DOMAIN"
+
+            # ---- 5. If we found the relevant config, patch try_files for SPA ----
+            TARGET_CONFIG="${CONFIG_WITH_XGKB:-$CONFIG_DOMAIN}"
+            if [ -n "$TARGET_CONFIG" ]; then
+              echo ">>> Patching $TARGET_CONFIG for SPA try_files..."
+              # Check if try_files is already present in the xgkb location block
+              if grep -q "try_files" "$TARGET_CONFIG"; then
+                echo ">>> try_files already present, just reloading nginx."
+              else
+                # Use sed to add try_files inside the xgkb location block
+                # This is a best-effort patch; the config structure may vary
+                sed -i '/location \/xgkb\// { n; s|autoindex on;|try_files $uri $uri/ /xgkb/index.html;|; }' "$TARGET_CONFIG" 2>/dev/null || true
+              fi
+              nginx -t && systemctl reload nginx && echo ">>> Nginx reloaded"
             else
-              echo ">>> No nginx config found for tpr.20100706.xyz – skipping nginx step"
+              echo ">>> No matching nginx config found. Reload skipped."
+              # Try generic reload anyway
+              nginx -t 2>/dev/null && systemctl reload nginx 2>/dev/null && echo ">>> Nginx reloaded (generic)" || true
             fi
 
-            echo ">>> Deployment complete!"
+            echo ">>> Deployment complete: https://tpr.20100706.xyz/xgkb/"
