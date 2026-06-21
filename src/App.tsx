@@ -105,7 +105,7 @@ function App() {
       {/* 顶部导航栏 */}
       <header
         className="flex items-center justify-between px-10 py-5 border-b border-[#ECECE6] flex-shrink-0"
-        style={{ background: 'rgba(250,250,247,0.92)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
+        style={{ background: 'rgba(250,250,247,0.92)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', position: 'relative', zIndex: 40 }}
       >
         {/* 品牌 + 空间切换 */}
         <div className="flex items-center gap-4 min-w-0">
