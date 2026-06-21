@@ -3,145 +3,147 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { Settings, Search, BookOpen } from 'lucide-react';
+import { Settings, BookOpen } from 'lucide-react';
 import { ConfigModal } from './components/ConfigModal';
-import { FileTree } from './components/FileTree';
-import { FilePreview } from './components/FilePreview';
-import { useApiClient, useFileContent, useProject } from './lib/hooks';
+import { ProjectsHub } from './components/ProjectsHub';
+import { ProjectDetail } from './components/ProjectDetail';
+import { useApiClient, useProject, useProjectsHub } from './lib/hooks';
+import { saveConfig, getConfig } from './lib/config';
 import type { FileListItem } from './lib/types';
+
+type View = 'hub' | 'project';
 
 function App() {
   // API 客户端
   const { client, isLoading: clientLoading, error: clientError, initClient, loadSavedClient } = useApiClient();
 
-  // 项目 ID
+  // 项目 ID（个人知识库空间 ID）
   const { projectId, isLoading: projectLoading, loadPersonalProjectId } = useProject(client);
 
-  // 文件内容
-  const { content, isLoading: contentLoading, error: contentError, loadFileContent, clearContent } =
-    useFileContent(client);
+  // 读取已保存的 projectsPath
+  const [projectsPath, setProjectsPath] = useState<string>(() => getConfig().projectsPath || 'Obsidian/projects');
 
-  // UI 状态
+  // Projects Hub 数据
+  const { projects, isLoading: hubLoading, error: hubError, load: loadProjects } =
+    useProjectsHub(client, projectId, projectsPath);
+
+  // 视图状态
+  const [view, setView] = useState<View>('hub');
+  const [selectedProject, setSelectedProject] = useState<FileListItem | null>(null);
+
+  // 配置弹窗
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<FileListItem | null>(null);
-  const [selectedFilePath, setSelectedFilePath] = useState<string>('');
 
   // 初始化：尝试加载保存的配置
   useEffect(() => {
     const hasConfig = loadSavedClient();
     if (!hasConfig) {
-      // 没有保存的配置，打开设置对话框
       setIsConfigModalOpen(true);
     }
   }, [loadSavedClient]);
 
-  // 配置保存后，加载项目 ID
+  // 配置成功后加载个人空间 ID
   useEffect(() => {
     if (client && !projectId) {
       loadPersonalProjectId();
     }
   }, [client, projectId, loadPersonalProjectId]);
 
-  // 处理配置保存
-  const handleConfigSave = useCallback(async (appKey: string, serverUrl: string) => {
-    const success = initClient(appKey, serverUrl);
-    if (!success) {
-      throw new Error('Failed to initialize API client');
+  // 有了 projectId 后加载项目列表
+  useEffect(() => {
+    if (client && projectId) {
+      loadProjects();
     }
+  }, [client, projectId, loadProjects]);
+
+  // 配置保存
+  const handleConfigSave = useCallback(async (appKey: string, serverUrl: string, newProjectsPath: string) => {
+    const success = initClient(appKey, serverUrl);
+    if (!success) throw new Error('Failed to initialize API client');
+    saveConfig({ projectsPath: newProjectsPath });
+    setProjectsPath(newProjectsPath);
+    // 返回 hub 并重新加载
+    setView('hub');
+    setSelectedProject(null);
   }, [initClient]);
 
-  // 处理文件选择
-  const handleFileSelect = useCallback((file: FileListItem, path: string) => {
-    setSelectedFile(file);
-    setSelectedFilePath(path);
-    clearContent();
-    
-    // 图片不走文本接口，FilePreview 组件会自己拉下载链接
-    const suffix = file.name.split('.').pop()?.toLowerCase() || '';
-    const isImage = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico'].includes(suffix);
-    if (!isImage) {
-      loadFileContent(String(file.id), file.name);
-    }
-  }, [clearContent, loadFileContent]);
+  // 选中项目
+  const handleSelectProject = useCallback((project: FileListItem) => {
+    setSelectedProject(project);
+    setView('project');
+  }, []);
 
-  // 搜索功能（简化版：按文件名搜索）
-  const [searchQuery, setSearchQuery] = useState('');
-  const handleSearch = useCallback(() => {
-    // TODO: 实现搜索功能
-    console.log('搜索:', searchQuery);
-  }, [searchQuery]);
+  // 返回看板
+  const handleBack = useCallback(() => {
+    setSelectedProject(null);
+    setView('hub');
+  }, []);
+
+  const isConnecting = clientLoading || projectLoading;
 
   return (
-    <div className="h-screen flex flex-col bg-white">
+    <div className="h-screen flex flex-col bg-gray-50">
       {/* 顶部导航栏 */}
-      <header className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gray-50">
-        <div className="flex items-center gap-3">
-          <BookOpen className="w-6 h-6 text-blue-500" />
-          <h1 className="text-lg font-semibold">玄关知识库浏览器</h1>
+      <header className="flex items-center justify-between px-5 py-3 border-b border-gray-200 bg-white">
+        <div
+          className="flex items-center gap-2.5 cursor-pointer"
+          onClick={() => view === 'project' && handleBack()}
+        >
+          <BookOpen className="w-5 h-5 text-blue-500" />
+          <h1 className="text-base font-semibold text-gray-800">玄关知识库浏览器</h1>
         </div>
 
         <div className="flex items-center gap-2">
-          {/* 搜索框 */}
-          <div className="relative">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              placeholder="搜索文件..."
-              className="pl-8 pr-4 py-1.5 text-sm border border-gray-300 rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-48"
-            />
-            <Search className="w-4 h-4 absolute left-2.5 top-2 text-gray-400" />
-          </div>
-
           {/* 设置按钮 */}
           <button
             onClick={() => setIsConfigModalOpen(true)}
-            className="p-2 hover:bg-gray-200 rounded-md"
+            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
             title="设置"
           >
-            <Settings className="w-5 h-5" />
+            <Settings className="w-4.5 h-4.5" />
           </button>
         </div>
       </header>
 
-      {/* 主内容区：分栏布局 */}
+      {/* 主内容区 */}
       <main className="flex-1 flex overflow-hidden">
-        {/* 左侧：文件树 */}
-        <aside className="w-64 border-r border-gray-200 overflow-hidden flex flex-col">
-          {projectId && client ? (
-            <FileTree client={client} projectId={projectId} onFileSelect={handleFileSelect} />
-          ) : (
-            <div className="flex items-center justify-center h-full text-gray-500">
-              <div className="text-center">
-                {clientLoading || projectLoading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-500 mx-auto mb-2" />
-                    <p className="text-sm">加载中...</p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-sm mb-2">无法连接到知识库</p>
-                    <p className="text-xs text-gray-400">{clientError}</p>
-                  </>
-                )}
-              </div>
+        {isConnecting ? (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center text-gray-500">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-400 mx-auto mb-3" />
+              <p className="text-sm">连接知识库...</p>
             </div>
-          )}
-        </aside>
-
-        {/* 右侧：文件预览 */}
-        <section className="flex-1 overflow-hidden">
-          <FilePreview
-            content={content}
-            fileName={selectedFile?.name}
-            filePath={selectedFilePath}
-            isLoading={contentLoading}
-            error={contentError}
+          </div>
+        ) : !client || !projectId ? (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center text-gray-500 px-8">
+              <p className="text-sm mb-2">无法连接到知识库</p>
+              <p className="text-xs text-gray-400">{clientError}</p>
+              <button
+                onClick={() => setIsConfigModalOpen(true)}
+                className="mt-4 px-4 py-2 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600"
+              >
+                打开设置
+              </button>
+            </div>
+          </div>
+        ) : view === 'project' && selectedProject ? (
+          <ProjectDetail
             client={client}
-            fileId={selectedFile ? String(selectedFile.id) : undefined}
+            projectId={projectId}
+            project={selectedProject}
+            onBack={handleBack}
           />
-        </section>
+        ) : (
+          <ProjectsHub
+            client={client}
+            projects={projects}
+            isLoading={hubLoading}
+            error={hubError}
+            onSelectProject={handleSelectProject}
+            onReload={loadProjects}
+          />
+        )}
       </main>
 
       {/* 配置模态框 */}

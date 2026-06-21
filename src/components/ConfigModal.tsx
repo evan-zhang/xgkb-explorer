@@ -4,18 +4,19 @@
  */
 
 import { useState, useEffect } from 'react';
-import { X, Key, Globe, Check, AlertCircle } from 'lucide-react';
+import { X, Key, Globe, FolderOpen, Check, AlertCircle } from 'lucide-react';
 import { getConfig } from '../lib/config';
 
 interface ConfigModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (appKey: string, serverUrl: string) => void;
+  onSave: (appKey: string, serverUrl: string, projectsPath: string) => void;
 }
 
 export function ConfigModal({ isOpen, onClose, onSave }: ConfigModalProps) {
   const [appKey, setAppKey] = useState('');
   const [serverUrl, setServerUrl] = useState('');
+  const [projectsPath, setProjectsPath] = useState('');
   const [isValidating, setIsValidating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -26,6 +27,7 @@ export function ConfigModal({ isOpen, onClose, onSave }: ConfigModalProps) {
       const config = getConfig();
       setAppKey(config.appKey || '');
       setServerUrl(config.serverUrl || 'https://sg-al-cwork-web.mediportal.com.cn/open-api/');
+      setProjectsPath(config.projectsPath || 'Obsidian/projects');
       setError(null);
       setSuccess(false);
     }
@@ -58,7 +60,7 @@ export function ConfigModal({ isOpen, onClose, onSave }: ConfigModalProps) {
 
     // 调用保存回调
     try {
-      await onSave(appKey.trim(), serverUrl.trim());
+      await onSave(appKey.trim(), serverUrl.trim(), projectsPath.trim());
       setSuccess(true);
       setTimeout(() => {
         onClose();
@@ -119,6 +121,23 @@ export function ConfigModal({ isOpen, onClose, onSave }: ConfigModalProps) {
               className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               disabled={isValidating}
             />
+          </div>
+
+          {/* 项目目录路径 */}
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              <FolderOpen className="w-4 h-4 inline mr-1" />
+              项目目录路径
+            </label>
+            <input
+              type="text"
+              value={projectsPath}
+              onChange={(e) => setProjectsPath(e.target.value)}
+              placeholder="Obsidian/projects"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={isValidating}
+            />
+            <p className="text-xs text-gray-400 mt-1">知识库中存放项目的目录路径，用 / 分隔</p>
           </div>
 
           {/* 状态消息 */}

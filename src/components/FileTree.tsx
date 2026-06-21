@@ -13,20 +13,30 @@ interface FileTreeProps {
   client: any;
   projectId: string | null;
   onFileSelect: (file: FileListItem, path: string) => void;
+  /** 若传入，则以此 fileId 作为根节点（跳过 getLevel1Folders） */
+  rootFileId?: string;
 }
 
-export function FileTree({ client, projectId, onFileSelect }: FileTreeProps) {
+export function FileTree({ client, projectId, onFileSelect, rootFileId }: FileTreeProps) {
   const { rootFiles, expandedFolders, isLoading, error, loadRootFiles, loadChildFiles, toggleFolder } =
     useFileTree(client);
 
   const [childFilesCache, setChildFilesCache] = useState<Record<string, FileListItem[]>>({});
 
-  // 加载根目录
+  // 加载根目录：若有 rootFileId 则直接用它加载子项，否则用 projectId 加载一级目录
   useEffect(() => {
-    if (projectId) {
+    if (rootFileId) {
+      loadChildFiles(rootFileId).then((children) => {
+        if (children.length > 0) {
+          // 借用 loadRootFiles 的内部 setter 需通过 hack，改为直接利用缓存机制
+          // 将 rootFileId 的子项当作"根文件"写入缓存，展开 rootFileId
+          setChildFilesCache((prev) => ({ ...prev, [rootFileId]: children }));
+        }
+      });
+    } else if (projectId) {
       loadRootFiles(projectId);
     }
-  }, [projectId, loadRootFiles]);
+  }, [projectId, rootFileId, loadRootFiles, loadChildFiles]);
 
   // 加载子目录
   const loadFolderChildren = async (folderId: string) => {
@@ -125,7 +135,22 @@ export function FileTree({ client, projectId, onFileSelect }: FileTreeProps) {
     );
   };
 
-  if (isLoading) {
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-full text-red-500">
+        <p className="text-sm text-center px-4">{error}</p>
+      </div>
+    );
+  }
+
+  // 当传入 rootFileId 时，以该目录的子项作为树的根
+  const effectiveRootFiles = rootFileId
+    ? (childFilesCache[rootFileId] || [])
+    : rootFiles;
+
+  const effectiveLoading = isLoading || (rootFileId && effectiveRootFiles.length === 0 && !error);
+
+  if (effectiveLoading) {
     return (
       <div className="flex items-center justify-center h-full text-gray-500">
         <div className="text-center">
@@ -136,15 +161,7 @@ export function FileTree({ client, projectId, onFileSelect }: FileTreeProps) {
     );
   }
 
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-full text-red-500">
-        <p className="text-sm text-center px-4">{error}</p>
-      </div>
-    );
-  }
-
-  if (rootFiles.length === 0) {
+  if (effectiveRootFiles.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-gray-500">
         <p className="text-sm">空目录</p>
@@ -154,7 +171,7 @@ export function FileTree({ client, projectId, onFileSelect }: FileTreeProps) {
 
   return (
     <div className="h-full overflow-y-auto">
-      {rootFiles.map((file) => renderTreeNode(file))}
+      {effectiveRootFiles.map((file) => renderTreeNode(file))}
     </div>
   );
 }

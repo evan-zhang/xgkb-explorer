@@ -7,6 +7,7 @@ export interface Config {
   serverUrl: string;
   appKey: string;
   projectId?: string;
+  projectsPath: string;
 }
 
 // 默认配置
@@ -14,6 +15,7 @@ const DEFAULT_CONFIG: Config = {
   serverUrl: import.meta.env.VITE_SERVER_URL || 'https://sg-al-cwork-web.mediportal.com.cn/open-api/',
   appKey: import.meta.env.VITE_APP_KEY || '',
   projectId: import.meta.env.VITE_PROJECT_ID,
+  projectsPath: import.meta.env.VITE_PROJECTS_PATH || 'Obsidian/projects',
 };
 
 // 本地存储 key

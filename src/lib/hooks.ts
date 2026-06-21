@@ -2,7 +2,7 @@
  * React Hooks for API calls
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { KbApiClient } from './api';
 import type { FileListItem } from '../lib/types';
 import { getConfig, saveConfig } from './config';
@@ -169,6 +169,101 @@ export function useFileContent(client: KbApiClient | null) {
     loadFileContent,
     clearContent,
   };
+}
+
+// ==================== Projects Hub Hook ====================
+
+/**
+ * 解析 projectsPath（如 "Obsidian/projects"）为目标目录的 fileId，
+ * 并加载该目录下的一级子项（即项目列表）。
+ */
+export function useProjectsHub(client: KbApiClient | null, projectId: string | null, projectsPath: string) {
+  const [projects, setProjects] = useState<FileListItem[]>([]);
+  const [projectsDirFileId, setProjectsDirFileId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    if (!client || !projectId || !projectsPath) return;
+
+    setIsLoading(true);
+    setError(null);
+    setProjects([]);
+    setProjectsDirFileId(null);
+
+    try {
+      const segments = projectsPath.split('/').filter(Boolean);
+
+      // 逐段导航：先加载一级目录，再逐层向下
+      let currentChildren: FileListItem[] = [];
+      const level1Result = await client.getLevel1Folders(projectId);
+      if (!level1Result.ok) { setError(level1Result.error); return; }
+      currentChildren = level1Result.value;
+
+      let targetFileId: string | null = null;
+      for (const segment of segments) {
+        const match = currentChildren.find(
+          (f) => f.name === segment && f.type === 1,
+        );
+        if (!match) {
+          setError(`找不到目录：${segment}（路径：${projectsPath}）`);
+          return;
+        }
+        targetFileId = String(match.id);
+        const childResult = await client.getChildFiles(targetFileId);
+        if (!childResult.ok) { setError(childResult.error); return; }
+        currentChildren = childResult.value;
+      }
+
+      if (!targetFileId) { setError('路径为空'); return; }
+
+      setProjectsDirFileId(targetFileId);
+      // currentChildren 现在是 projectsPath 目录下的直接子项
+      setProjects(currentChildren.filter((f) => f.type === 1));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [client, projectId, projectsPath]);
+
+  return { projects, projectsDirFileId, isLoading, error, load };
+}
+
+/**
+ * 懒加载指定项目目录下的 README.md 或 index.md 内容摘要（前 200 字符）。
+ */
+export function useReadmePreview(client: KbApiClient | null, projectFileId: string) {
+  const [preview, setPreview] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!client || !projectFileId) return;
+    let cancelled = false;
+    setIsLoading(true);
+    setPreview(null);
+
+    client.getChildFiles(projectFileId).then(async (result) => {
+      if (cancelled || !result.ok) return;
+      const readme = result.value.find(
+        (f) => f.type !== 1 && /^(readme|index)\.(md|markdown)$/i.test(f.name),
+      );
+      if (!readme) { setIsLoading(false); return; }
+
+      const content = await client.getFullFileContent(String(readme.id));
+      if (cancelled) return;
+      if (content.ok && content.value) {
+        // 去掉标题行和空行，取有效内容
+        const lines = content.value.split('\n').filter((l) => l.trim() && !l.startsWith('#'));
+        setPreview(lines.join(' ').slice(0, 200) || null);
+      }
+      setIsLoading(false);
+    }).catch(() => { if (!cancelled) setIsLoading(false); });
+
+    return () => { cancelled = true; };
+  }, [client, projectFileId]);
+
+  return { preview, isLoading };
 }
 
 // ==================== Project Hook ====================
