@@ -17,6 +17,14 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function formatDate(ts: number): string {
+  const d = new Date(ts);
+  const yy = String(d.getFullYear()).slice(2);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yy}/${mm}/${dd}`;
+}
+
 const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico'];
 const HTML_EXTS = ['html', 'htm'];
 const MD_EXTS = ['md', 'markdown', 'mdown', 'mkd'];
@@ -183,7 +191,7 @@ export function FileViewerModal({ client, file, onClose }: FileViewerModalProps)
               {[
                 file.size ? formatSize(file.size) : null,
                 (file.updateTime ?? file.createTime)
-                  ? new Date((file.updateTime ?? file.createTime)!).toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' })
+                  ? formatDate((file.updateTime ?? file.createTime)!)
                   : null,
               ].filter(Boolean).join(' · ')}
             </p>

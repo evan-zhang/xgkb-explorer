@@ -12,6 +12,14 @@ interface FileExplorerProps {
   onFolderNavigate: (folder: FileListItem) => void;
 }
 
+function formatDate(ts: number): string {
+  const d = new Date(ts);
+  const yy = String(d.getFullYear()).slice(2);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yy}/${mm}/${dd}`;
+}
+
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
@@ -41,9 +49,7 @@ function ExplorerCard({ item, onClick, onContextMenu }: ExplorerCardProps) {
   const isFolder = item.type === 1;
   const suffix = isFolder ? '' : (item.name.split('.').pop()?.toLowerCase() || '');
   const dateTs = item.updateTime ?? item.createTime;
-  const updateDate = dateTs
-    ? new Date(dateTs).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
-    : null;
+  const updateDate = dateTs ? formatDate(dateTs) : null;
 
   const handleTouchStart = (e: React.TouchEvent) => {
     moved.current = false;
