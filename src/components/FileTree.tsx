@@ -13,11 +13,12 @@ interface FileTreeProps {
   client: any;
   projectId: string | null;
   onFileSelect: (file: FileListItem, path: string) => void;
+  onFolderSelect?: (folder: FileListItem, path: string) => void;
   /** 若传入，则以此 fileId 作为根节点（跳过 getLevel1Folders） */
   rootFileId?: string;
 }
 
-export function FileTree({ client, projectId, onFileSelect, rootFileId }: FileTreeProps) {
+export function FileTree({ client, projectId, onFileSelect, onFolderSelect, rootFileId }: FileTreeProps) {
   const { rootFiles, expandedFolders, isLoading, error, loadRootFiles, loadChildFiles, toggleFolder } =
     useFileTree(client);
 
@@ -56,12 +57,12 @@ export function FileTree({ client, projectId, onFileSelect, rootFileId }: FileTr
   // 处理节点点击
   const handleNodeClick = (file: FileListItem, path: string) => {
     if (file.type === 1) {
-      // 文件夹：切换展开状态
+      // 文件夹：切换展开状态 + 通知父组件
       toggleFolder(String(file.id));
       if (!expandedFolders.has(String(file.id))) {
-        // 即将展开，加载子项
         loadFolderChildren(String(file.id));
       }
+      onFolderSelect?.(file, path);
     } else {
       // 文件：触发选择回调
       onFileSelect(file, path);

@@ -305,7 +305,7 @@ export function FilePreview({ content, fileName, filePath, isLoading, error, cli
       )}
 
       {/* 内容区域 */}
-      <div className="flex-1 overflow-hidden">{renderContent()}</div>
+      <div className="flex-1 overflow-y-auto">{renderContent()}</div>
     </div>
   );
 }

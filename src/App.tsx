@@ -7,13 +7,25 @@ import { Settings, BookOpen } from 'lucide-react';
 import { ConfigModal } from './components/ConfigModal';
 import { ProjectsHub } from './components/ProjectsHub';
 import { ProjectDetail } from './components/ProjectDetail';
+import { StandaloneFileView } from './components/StandaloneFileView';
 import { useApiClient, useProject, useProjectsHub } from './lib/hooks';
 import { saveConfig, getConfig } from './lib/config';
 import type { FileListItem } from './lib/types';
 
 type View = 'hub' | 'project';
 
+// 顶层路由：独立文件查看 vs 主应用（分开以遵守 Rules of Hooks）
 function App() {
+  const urlParams = new URLSearchParams(location.search);
+  const standaloneFileId = urlParams.get('fileId');
+  const standaloneFileName = urlParams.get('fileName') || '';
+  if (standaloneFileId) {
+    return <StandaloneFileView fileId={standaloneFileId} fileName={standaloneFileName} />;
+  }
+  return <MainApp />;
+}
+
+function MainApp() {
   // API 客户端
   const { client, isLoading: clientLoading, error: clientError, initClient, loadSavedClient } = useApiClient();
 
@@ -156,4 +168,4 @@ function App() {
   );
 }
 
-export default App;
+export default App; // App is the router wrapper
