@@ -9,6 +9,7 @@ import type {
   DownloadInfoVO,
   FileListItem,
   FileMeta,
+  PreviewTicketVO,
 } from './types';
 import { API_PATHS, DEFAULT_SERVER_URL } from './types';
 
@@ -135,6 +136,20 @@ export class KbApiClient {
     return this.request<FileMeta[]>('POST', API_PATHS.batchGetMeta, {
       fileIds,
       projectId,
+    });
+  }
+
+  /** 生成文档预览链接（文档预览服务） */
+  async getPreviewTicket(
+    fileId: string,
+    format: 'md' | 'html',
+    title?: string,
+  ): Promise<ApiResult<PreviewTicketVO>> {
+    return this.request<PreviewTicketVO>('POST', API_PATHS.getPreviewTicket, {
+      bizType: 'kb',
+      bizId: fileId,
+      format,
+      title,
     });
   }
 
