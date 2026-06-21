@@ -7,6 +7,7 @@ import { Settings, ChevronDown } from 'lucide-react';
 import { ConfigModal } from './components/ConfigModal';
 import { ProjectsHub } from './components/ProjectsHub';
 import { ProjectDetail } from './components/ProjectDetail';
+import { FilePreview } from './components/FilePreview';
 import { useApiClient, useProject, useProjectsHub } from './lib/hooks';
 import { saveConfig, getConfig } from './lib/config';
 import type { SpaceEntry } from './lib/config';
@@ -14,7 +15,50 @@ import type { FileListItem } from './lib/types';
 
 type View = 'hub' | 'project';
 
-function App() {
+// ── Standalone preview mode (opened via ?mode=preview&fileId=...&fileName=...) ─
+
+function StandalonePreview() {
+  const params = new URLSearchParams(window.location.search);
+  const fileId = params.get('fileId') ?? '';
+  const fileName = params.get('fileName') ?? '';
+
+  const { client, isLoading: clientLoading, loadSavedClient } = useApiClient();
+  const [content, setContent] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => { loadSavedClient(); }, [loadSavedClient]);
+
+  useEffect(() => {
+    if (fileName) document.title = fileName;
+  }, [fileName]);
+
+  useEffect(() => {
+    if (!client || !fileId) return;
+    setLoading(true);
+    client.getFullFileContent(fileId).then((r) => {
+      if (r.ok) setContent(r.value);
+      else setError(r.error);
+      setLoading(false);
+    });
+  }, [client, fileId]);
+
+  return (
+    <div className="min-h-screen bg-white">
+      <FilePreview
+        content={content}
+        fileName={fileName}
+        filePath={undefined}
+        isLoading={clientLoading || loading}
+        error={error}
+        client={client}
+        fileId={fileId}
+      />
+    </div>
+  );
+}
+
+function MainApp() {
   const { client, isLoading: clientLoading, error: clientError, initClient, loadSavedClient } = useApiClient();
   const { projectId, isLoading: projectLoading, loadPersonalProjectId } = useProject(client);
 
@@ -227,6 +271,13 @@ function App() {
       />
     </div>
   );
+}
+
+function App() {
+  if (new URLSearchParams(window.location.search).get('mode') === 'preview') {
+    return <StandalonePreview />;
+  }
+  return <MainApp />;
 }
 
 export default App;
