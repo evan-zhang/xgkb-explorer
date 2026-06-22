@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect, useRef } from 'react';
-import { RefreshCw, AlertCircle, Clock, ChevronLeft, ChevronRight, Star, Share2 } from 'lucide-react';
+import { RefreshCw, AlertCircle, Clock, ChevronLeft, ChevronRight, Star, Share2, MoreHorizontal } from 'lucide-react';
 import type { KbApiClient } from '../lib/api';
 import type { FileListItem } from '../lib/types';
 import { useReadmePreview } from '../lib/hooks';
@@ -49,43 +49,14 @@ function ProjectCard({ project, client, isStarred, onClick, onToggleStar, onCont
   const { preview, isLoading: previewLoading } = useReadmePreview(client, String(project.id));
   const [c1, c2] = nameToGradient(project.name);
   const initial = project.name.charAt(0);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const moved = useRef(false);
-  const longPressTriggered = useRef(false);
 
   const updateDate = project.updateTime
     ? new Date(project.updateTime).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
     : null;
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    moved.current = false;
-    longPressTriggered.current = false;
-    const t = e.touches[0];
-    timerRef.current = setTimeout(() => {
-      if (!moved.current) {
-        longPressTriggered.current = true;
-        onContextMenu(project, t.clientX, t.clientY);
-      }
-    }, 500);
-  };
-  const handleTouchMove = () => { moved.current = true; };
-  const handleTouchEnd = () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  const handleContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-    onContextMenu(project, e.clientX, e.clientY);
-  };
-  const handleClick = () => {
-    if (longPressTriggered.current) { longPressTriggered.current = false; return; }
-    onClick();
-  };
-
   return (
     <div
-      onClick={handleClick}
-      onContextMenu={handleContextMenu}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
+      onClick={onClick}
       className="group cursor-pointer transition-all duration-200 hover:-translate-y-1.5"
       style={{
         height: 256,
@@ -109,6 +80,23 @@ function ProjectCard({ project, client, isStarred, onClick, onToggleStar, onCont
         <div style={{ fontSize: 13, fontWeight: 600, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%', opacity: 0.95 }}>
           {project.name}
         </div>
+
+        {/* More button */}
+        <button
+          onClick={(e) => { e.stopPropagation(); onContextMenu(project, e.clientX, e.clientY); }}
+          className="opacity-0 group-hover:opacity-100 transition-all duration-150"
+          style={{
+            position: 'absolute', top: 8, right: 40,
+            width: 28, height: 28,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            borderRadius: 6,
+            background: 'rgba(255,255,255,0.15)',
+            color: 'rgba(255,255,255,0.85)',
+            border: 'none', cursor: 'pointer',
+          }}
+        >
+          <MoreHorizontal style={{ width: 14, height: 14 }} />
+        </button>
 
         {/* Star button */}
         <button

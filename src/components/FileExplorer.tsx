@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Folder, FileText, ExternalLink, Link, Check, Share2 } from 'lucide-react';
+import { Folder, FileText, ExternalLink, Link, Check, Share2, MoreHorizontal } from 'lucide-react';
 import type { KbApiClient } from '../lib/api';
 import type { FileListItem } from '../lib/types';
 import { ContextMenu } from './ContextMenu';
@@ -42,58 +42,25 @@ interface ExplorerCardProps {
 }
 
 function ExplorerCard({ item, onClick, onContextMenu }: ExplorerCardProps) {
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const moved = useRef(false);
-  const longPressTriggered = useRef(false);
-
   const isFolder = item.type === 1;
   const suffix = isFolder ? '' : (item.name.split('.').pop()?.toLowerCase() || '');
   const dateTs = item.updateTime ?? item.createTime;
   const updateDate = dateTs ? formatDate(dateTs) : null;
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    moved.current = false;
-    longPressTriggered.current = false;
-    const t = e.touches[0];
-    timerRef.current = setTimeout(() => {
-      if (!moved.current) {
-        longPressTriggered.current = true;
-        onContextMenu?.(item, t.clientX, t.clientY);
-      }
-    }, 500);
-  };
-
-  const handleTouchMove = () => { moved.current = true; };
-
-  const handleTouchEnd = () => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-  };
-
-  const handleContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-    onContextMenu?.(item, e.clientX, e.clientY);
-  };
-
-  const handleClick = () => {
-    if (longPressTriggered.current) {
-      longPressTriggered.current = false;
-      return;
-    }
-    onClick();
-  };
-
   return (
     <div
-      onClick={handleClick}
-      onContextMenu={handleContextMenu}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      className="group flex flex-col items-center gap-2 p-3 rounded-xl cursor-pointer
+      onClick={onClick}
+      className="relative group flex flex-col items-center gap-2 p-3 rounded-xl cursor-pointer
         transition-all duration-150 select-none
         bg-white border border-[#ECECE6]
         hover:border-[#C8C8C0] hover:bg-[#F5F3EE] hover:shadow-sm"
     >
+      <button
+        className="absolute top-1.5 right-1.5 p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[#E5E3DC]"
+        onClick={(e) => { e.stopPropagation(); onContextMenu?.(item, e.clientX, e.clientY); }}
+      >
+        <MoreHorizontal className="w-4 h-4" style={{ color: '#9CA3AF' }} />
+      </button>
       <div
         className="w-12 h-12 flex items-center justify-center rounded-xl flex-shrink-0"
         style={{ background: isFolder ? '#FBF7EE' : '#F5F3EE' }}

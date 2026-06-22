@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { ReactElement } from 'react';
-import { ChevronRight, ChevronDown, File, Folder, FolderOpen, Share2 } from 'lucide-react';
+import { ChevronRight, ChevronDown, File, Folder, FolderOpen, Share2, MoreHorizontal } from 'lucide-react';
 import type { FileListItem } from '../lib/types';
 import { useFileTree } from '../lib/hooks';
 import { ContextMenu } from './ContextMenu';
@@ -115,17 +115,16 @@ export function FileTree({ client, projectId, onFileSelect, onFolderSelect, root
     return (
       <div key={fileId}>
         <div
-          className="flex items-center gap-1.5 cursor-pointer rounded-md transition-colors hover:bg-[#EDEBE4]"
+          className="group flex items-center gap-1.5 cursor-pointer rounded-md transition-colors hover:bg-[#EDEBE4]"
           style={{
             paddingLeft: `${level * 16 + 12}px`,
-            paddingRight: 12,
+            paddingRight: 4,
             paddingTop: 7,
             paddingBottom: 7,
             fontSize: 14,
             color: '#4B5563',
           }}
           onClick={() => handleNodeClick(file, currentPath)}
-          onContextMenu={(e) => { e.preventDefault(); setMenu({ item: file, x: e.clientX, y: e.clientY }); }}
         >
           {/* 展开/折叠图标 */}
           {hasChildren ? (
@@ -145,6 +144,14 @@ export function FileTree({ client, projectId, onFileSelect, onFolderSelect, root
 
           {/* 文件名 */}
           <span className="truncate flex-1">{file.name}</span>
+
+          {/* ⋯ 按钮 */}
+          <button
+            className="flex-shrink-0 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[#DDD9D0]"
+            onClick={(e) => { e.stopPropagation(); setMenu({ item: file, x: e.clientX, y: e.clientY }); }}
+          >
+            <MoreHorizontal className="w-3.5 h-3.5" style={{ color: '#9CA3AF' }} />
+          </button>
         </div>
 
         {/* 递归渲染子节点 */}
