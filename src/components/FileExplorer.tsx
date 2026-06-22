@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Folder, FileText, ExternalLink, Link, Check } from 'lucide-react';
+import { Folder, FileText, ExternalLink, Link, Check, Share2 } from 'lucide-react';
 import type { KbApiClient } from '../lib/api';
 import type { FileListItem } from '../lib/types';
 import { ContextMenu } from './ContextMenu';
@@ -54,7 +54,6 @@ function ExplorerCard({ item, onClick, onContextMenu }: ExplorerCardProps) {
   const handleTouchStart = (e: React.TouchEvent) => {
     moved.current = false;
     longPressTriggered.current = false;
-    if (isFolder) return;
     const t = e.touches[0];
     timerRef.current = setTimeout(() => {
       if (!moved.current) {
@@ -72,7 +71,7 @@ function ExplorerCard({ item, onClick, onContextMenu }: ExplorerCardProps) {
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (!isFolder) onContextMenu?.(item, e.clientX, e.clientY);
+    onContextMenu?.(item, e.clientX, e.clientY);
   };
 
   const handleClick = () => {
@@ -147,23 +146,37 @@ export function FileExplorer({ client, folderId, projectId, onFileSelect, onFold
   }, []);
 
   const menuItems = menu ? [
-    {
-      label: '在新标签页打开',
-      icon: <ExternalLink className="w-4 h-4" />,
-      onClick: async () => {
-        const r = await client.getDownloadInfo(String(menu.item.id), false);
-        if (r.ok && r.value.downloadUrl) window.open(r.value.downloadUrl, '_blank', 'noopener,noreferrer');
-        setMenu(null);
+    ...(menu.item.type !== 1 ? [
+      {
+        label: '在新标签页打开',
+        icon: <ExternalLink className="w-4 h-4" />,
+        onClick: async () => {
+          const r = await client.getDownloadInfo(String(menu.item.id), false);
+          if (r.ok && r.value.downloadUrl) window.open(r.value.downloadUrl, '_blank', 'noopener,noreferrer');
+          setMenu(null);
+        },
       },
-    },
+      {
+        label: '复制文件链接',
+        icon: <Link className="w-4 h-4" />,
+        onClick: async () => {
+          const r = await client.getDownloadInfo(String(menu.item.id), false);
+          if (r.ok && r.value.downloadUrl) {
+            await navigator.clipboard.writeText(r.value.downloadUrl);
+            showToast('链接已复制');
+          }
+          setMenu(null);
+        },
+      },
+    ] : []),
     {
-      label: '复制文件链接',
-      icon: <Link className="w-4 h-4" />,
+      label: '分享',
+      icon: <Share2 className="w-4 h-4" />,
       onClick: async () => {
-        const r = await client.getDownloadInfo(String(menu.item.id), false);
-        if (r.ok && r.value.downloadUrl) {
-          await navigator.clipboard.writeText(r.value.downloadUrl);
-          showToast('链接已复制');
+        const r = await client.getShareUrl(String(menu.item.id));
+        if (r.ok) {
+          await navigator.clipboard.writeText(r.value.shareUrl);
+          showToast('分享链接已复制');
         }
         setMenu(null);
       },

@@ -60,6 +60,11 @@ export interface PreviewTicketVO {
   previewUrl: string;
 }
 
+// 分享短链
+export interface ShareUrlVO {
+  shareUrl: string;
+}
+
 // API 路径常量
 export const API_PATHS = {
   getChildFiles: 'document-database/file/getChildFiles',
@@ -72,6 +77,7 @@ export const API_PATHS = {
   searchFile: 'document-database/file/searchFile',
   listDescendantFiles: 'document-database/file/listDescendantFiles',
   getPreviewTicket: 'doc-preview/api/preview/ticket',
+  getShareUrl: 'document-database/share/getShareUrl',
 } as const;
 
 // 默认服务器地址

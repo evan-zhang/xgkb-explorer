@@ -3,11 +3,12 @@
  * 显示可展开/折叠的目录树结构
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { ReactElement } from 'react';
-import { ChevronRight, ChevronDown, File, Folder, FolderOpen } from 'lucide-react';
+import { ChevronRight, ChevronDown, File, Folder, FolderOpen, Share2 } from 'lucide-react';
 import type { FileListItem } from '../lib/types';
 import { useFileTree } from '../lib/hooks';
+import { ContextMenu } from './ContextMenu';
 
 interface FileTreeProps {
   client: any;
@@ -25,6 +26,15 @@ export function FileTree({ client, projectId, onFileSelect, onFolderSelect, root
     useFileTree(client);
 
   const [childFilesCache, setChildFilesCache] = useState<Record<string, FileListItem[]>>({});
+  const [menu, setMenu] = useState<{ item: FileListItem; x: number; y: number } | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToast(null), 2000);
+  }, []);
 
   // 加载根目录：若有 rootFileId 则直接用它加载子项，否则用 projectId 加载一级目录
   useEffect(() => {
@@ -115,6 +125,7 @@ export function FileTree({ client, projectId, onFileSelect, onFolderSelect, root
             color: '#4B5563',
           }}
           onClick={() => handleNodeClick(file, currentPath)}
+          onContextMenu={(e) => { e.preventDefault(); setMenu({ item: file, x: e.clientX, y: e.clientY }); }}
         >
           {/* 展开/折叠图标 */}
           {hasChildren ? (
@@ -187,8 +198,45 @@ export function FileTree({ client, projectId, onFileSelect, onFolderSelect, root
     : effectiveRootFiles;
 
   return (
-    <div className="h-full overflow-y-auto" style={{ padding: '8px 8px 16px' }}>
-      {displayRootFiles.map((file) => renderTreeNode(file))}
-    </div>
+    <>
+      <div className="h-full overflow-y-auto" style={{ padding: '8px 8px 16px' }}>
+        {displayRootFiles.map((file) => renderTreeNode(file))}
+      </div>
+
+      {menu && (
+        <ContextMenu
+          x={menu.x}
+          y={menu.y}
+          items={[
+            {
+              label: '分享',
+              icon: <Share2 className="w-4 h-4" />,
+              onClick: async () => {
+                const r = await client.getShareUrl(String(menu.item.id));
+                if (r.ok) {
+                  await navigator.clipboard.writeText(r.value.shareUrl);
+                  showToast('分享链接已复制');
+                }
+                setMenu(null);
+              },
+            },
+          ]}
+          onClose={() => setMenu(null)}
+        />
+      )}
+
+      {toast && (
+        <div style={{
+          position: 'fixed', bottom: 24, right: 24, zIndex: 9999,
+          background: '#1A1A1A', color: '#FFFFFF',
+          padding: '10px 16px', borderRadius: 10, fontSize: 13,
+          display: 'flex', alignItems: 'center', gap: 8,
+          boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+        }}>
+          <Share2 className="w-4 h-4" style={{ color: '#4ADE80' }} />
+          {toast}
+        </div>
+      )}
+    </>
   );
 }

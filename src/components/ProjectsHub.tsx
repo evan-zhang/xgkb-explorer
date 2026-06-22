@@ -1,8 +1,9 @@
-import { useCallback, useState, useEffect } from 'react';
-import { RefreshCw, AlertCircle, Clock, ChevronLeft, ChevronRight, Star } from 'lucide-react';
+import { useCallback, useState, useEffect, useRef } from 'react';
+import { RefreshCw, AlertCircle, Clock, ChevronLeft, ChevronRight, Star, Share2 } from 'lucide-react';
 import type { KbApiClient } from '../lib/api';
 import type { FileListItem } from '../lib/types';
 import { useReadmePreview } from '../lib/hooks';
+import { ContextMenu } from './ContextMenu';
 
 const PAGE_SIZE = 12;
 const STARRED_KEY = 'xgkb:starred_projects';
@@ -41,20 +42,50 @@ interface ProjectCardProps {
   isStarred: boolean;
   onClick: () => void;
   onToggleStar: (e: React.MouseEvent) => void;
+  onContextMenu: (item: FileListItem, x: number, y: number) => void;
 }
 
-function ProjectCard({ project, client, isStarred, onClick, onToggleStar }: ProjectCardProps) {
+function ProjectCard({ project, client, isStarred, onClick, onToggleStar, onContextMenu }: ProjectCardProps) {
   const { preview, isLoading: previewLoading } = useReadmePreview(client, String(project.id));
   const [c1, c2] = nameToGradient(project.name);
   const initial = project.name.charAt(0);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const moved = useRef(false);
+  const longPressTriggered = useRef(false);
 
   const updateDate = project.updateTime
     ? new Date(project.updateTime).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
     : null;
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    moved.current = false;
+    longPressTriggered.current = false;
+    const t = e.touches[0];
+    timerRef.current = setTimeout(() => {
+      if (!moved.current) {
+        longPressTriggered.current = true;
+        onContextMenu(project, t.clientX, t.clientY);
+      }
+    }, 500);
+  };
+  const handleTouchMove = () => { moved.current = true; };
+  const handleTouchEnd = () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    onContextMenu(project, e.clientX, e.clientY);
+  };
+  const handleClick = () => {
+    if (longPressTriggered.current) { longPressTriggered.current = false; return; }
+    onClick();
+  };
+
   return (
     <div
-      onClick={onClick}
+      onClick={handleClick}
+      onContextMenu={handleContextMenu}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
       className="group cursor-pointer transition-all duration-200 hover:-translate-y-1.5"
       style={{
         height: 256,
@@ -134,6 +165,19 @@ export function ProjectsHub({ client, projects, isLoading, error, onSelectProjec
   const handleReload = useCallback(() => onReload(), [onReload]);
   const [page, setPage] = useState(1);
   const [starred, setStarred] = useState<Set<string>>(loadStarred);
+  const [menu, setMenu] = useState<{ item: FileListItem; x: number; y: number } | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToast(null), 2000);
+  }, []);
+
+  const handleContextMenu = useCallback((item: FileListItem, x: number, y: number) => {
+    setMenu({ item, x, y });
+  }, []);
 
   useEffect(() => { setPage(1); }, [projects]);
 
@@ -255,6 +299,7 @@ export function ProjectsHub({ client, projects, isLoading, error, onSelectProjec
                     isStarred={true}
                     onClick={() => onSelectProject(project)}
                     onToggleStar={(e) => toggleStar(String(project.id), e)}
+                    onContextMenu={handleContextMenu}
                   />
                 ))}
               </div>
@@ -277,6 +322,7 @@ export function ProjectsHub({ client, projects, isLoading, error, onSelectProjec
                     isStarred={false}
                     onClick={() => onSelectProject(project)}
                     onToggleStar={(e) => toggleStar(String(project.id), e)}
+                    onContextMenu={handleContextMenu}
                   />
                 ))}
               </div>
@@ -319,6 +365,41 @@ export function ProjectsHub({ client, projects, isLoading, error, onSelectProjec
             </div>
           )}
         </>
+      )}
+
+      {menu && (
+        <ContextMenu
+          x={menu.x}
+          y={menu.y}
+          items={[
+            {
+              label: '分享',
+              icon: <Share2 className="w-4 h-4" />,
+              onClick: async () => {
+                const r = await client.getShareUrl(String(menu.item.id));
+                if (r.ok) {
+                  await navigator.clipboard.writeText(r.value.shareUrl);
+                  showToast('分享链接已复制');
+                }
+                setMenu(null);
+              },
+            },
+          ]}
+          onClose={() => setMenu(null)}
+        />
+      )}
+
+      {toast && (
+        <div style={{
+          position: 'fixed', bottom: 24, right: 24, zIndex: 9999,
+          background: '#1A1A1A', color: '#FFFFFF',
+          padding: '10px 16px', borderRadius: 10, fontSize: 13,
+          display: 'flex', alignItems: 'center', gap: 8,
+          boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+        }}>
+          <Share2 className="w-4 h-4" style={{ color: '#4ADE80' }} />
+          {toast}
+        </div>
       )}
     </div>
   );
