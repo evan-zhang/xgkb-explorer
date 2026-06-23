@@ -147,7 +147,7 @@ export function FileTree({ client, projectId, onFileSelect, onFolderSelect, root
 
           {/* ⋯ 按钮 */}
           <button
-            className="flex-shrink-0 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[#DDD9D0]"
+            className="flex-shrink-0 p-1 rounded transition-opacity hover:bg-[#DDD9D0]"
             onClick={(e) => { e.stopPropagation(); setMenu({ item: file, x: e.clientX, y: e.clientY }); }}
           >
             <MoreHorizontal className="w-3.5 h-3.5" style={{ color: '#9CA3AF' }} />

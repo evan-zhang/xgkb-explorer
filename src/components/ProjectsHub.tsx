@@ -84,7 +84,7 @@ function ProjectCard({ project, client, isStarred, onClick, onToggleStar, onCont
         {/* More button */}
         <button
           onClick={(e) => { e.stopPropagation(); onContextMenu(project, e.clientX, e.clientY); }}
-          className="opacity-0 group-hover:opacity-100 transition-all duration-150"
+          className="transition-all duration-150"
           style={{
             position: 'absolute', top: 8, right: 40,
             width: 28, height: 28,

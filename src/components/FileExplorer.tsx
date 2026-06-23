@@ -56,7 +56,7 @@ function ExplorerCard({ item, onClick, onContextMenu }: ExplorerCardProps) {
         hover:border-[#C8C8C0] hover:bg-[#F5F3EE] hover:shadow-sm"
     >
       <button
-        className="absolute top-1.5 right-1.5 p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[#E5E3DC]"
+        className="absolute top-1.5 right-1.5 p-1 rounded-md transition-opacity hover:bg-[#E5E3DC]"
         onClick={(e) => { e.stopPropagation(); onContextMenu?.(item, e.clientX, e.clientY); }}
       >
         <MoreHorizontal className="w-4 h-4" style={{ color: '#9CA3AF' }} />
