@@ -103,10 +103,21 @@ export function FileViewerModal({ client, file, onClose }: FileViewerModalProps)
   const openInNewTab = async () => {
     let url: string | null = null;
     if (state.phase === 'image' || state.phase === 'html' || state.phase === 'iframe') {
+      // These phases already have a renderable URL in state
       url = state.url;
     } else if (state.phase === 'content') {
-      const r = await client.getDownloadInfo(String(file.id), false);
-      if (r.ok && r.value.downloadUrl) url = r.value.downloadUrl;
+      const suffix = (file.name.split('.').pop() ?? '').toLowerCase();
+      if (MD_EXTS.includes(suffix) || HTML_EXTS.includes(suffix)) {
+        // MD/HTML have no in-app URL — getDownloadInfo would download the raw file.
+        // Use getPreviewTicket so the browser opens a rendered web page instead.
+        const format = MD_EXTS.includes(suffix) ? 'md' : 'html';
+        const r = await client.getPreviewTicket(String(file.id), format, file.name);
+        if (r.ok) url = r.value.previewUrl;
+      } else {
+        // Code / plain-text: raw file URL; browser will download, which is acceptable.
+        const r = await client.getDownloadInfo(String(file.id), false);
+        if (r.ok && r.value.downloadUrl) url = r.value.downloadUrl;
+      }
     }
     if (url) window.open(url, '_blank', 'noopener,noreferrer');
   };
