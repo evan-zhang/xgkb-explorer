@@ -101,14 +101,19 @@ export function FileViewerModal({ client, file, onClose }: FileViewerModalProps)
   };
 
   const openInNewTab = async () => {
-    let url: string | null = null;
-    if (state.phase === 'image' || state.phase === 'html' || state.phase === 'iframe') {
-      url = state.url;
-    } else if (state.phase === 'content') {
-      const r = await client.getDownloadInfo(String(file.id), false);
-      if (r.ok && r.value.downloadUrl) url = r.value.downloadUrl;
+    const escapeHtml = (s: string) => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    if (state.phase === 'content') {
+      // 自渲染内容：在新窗口中用同样的渲染方式打开
+      const w = window.open('', '_blank');
+      if (!w) return;
+      w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(file.name)}</title><style>body{font-family:-apple-system,Noto Sans SC,sans-serif;max-width:860px;margin:40px auto;padding:0 24px;line-height:1.8;color:#1A1A1A}pre{background:#f5f5f2;padding:16px;border-radius:8px;overflow-x:auto;font-size:14px}code{background:#f0efe9;padding:2px 6px;border-radius:3px;font-size:14px}pre code{background:none;padding:0}h1,h2,h3{font-family:Georgia,serif}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px 12px}th{background:#f5f5f2}blockquote{border-left:4px solid #ddd;margin:0;padding-left:16px;color:#666}img{max-width:100%}a{color:#2563EB}</style></head><body><pre>${escapeHtml(state.content)}</pre></body></html>`);
+      w.document.close();
+      return;
     }
-    if (url) window.open(url, '_blank', 'noopener,noreferrer');
+    // 其他阶段直接用当前 URL
+    if (state.phase === 'iframe' || state.phase === 'image' || state.phase === 'html') {
+      if (state.url) window.open(state.url, '_blank', 'noopener,noreferrer');
+    }
   };
 
   const renderBody = () => {

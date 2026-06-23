@@ -1,0 +1,102 @@
+project: xgkb-explorer
+updated: 2026-06-23
+workflow: AODW-Lite
+modules:
+  app-shell:
+    paths:
+      - src/App.tsx
+      - src/main.tsx
+    owns:
+      - top-level view routing
+      - config modal lifecycle
+      - client/project loading coordination
+    verify:
+      - npm run build
+      - browser smoke test after config changes
+  config:
+    paths:
+      - src/lib/config.ts
+      - src/components/ConfigModal.tsx
+    owns:
+      - localStorage schema
+      - AppKey/server URL/preview mode persistence
+      - space entries and migration
+    invariants:
+      - never commit real AppKeys
+      - migrations must preserve existing localStorage users
+    verify:
+      - npm run build
+      - switch AppKey and confirm projectId reloads
+  api-client:
+    paths:
+      - src/lib/api.ts
+      - src/lib/types.ts
+    owns:
+      - Open API paths
+      - request headers and error mapping
+      - response type normalization
+    invariants:
+      - resultCode 1 is success
+      - projectId values are string-normalized
+    verify:
+      - npm run build
+      - smoke test getPersonalProjectId and getLevel1Folders
+  hooks:
+    paths:
+      - src/lib/hooks.ts
+    owns:
+      - project id state
+      - folder traversal
+      - file content loading
+      - README/index preview lookup
+    invariants:
+      - projectId is tied to current client
+      - empty path means root
+    verify:
+      - npm run build
+      - switch between two AppKeys
+  project-ui:
+    paths:
+      - src/components/ProjectsHub.tsx
+      - src/components/ProjectDetail.tsx
+      - src/components/FileExplorer.tsx
+      - src/components/FileTree.tsx
+      - src/components/ContextMenu.tsx
+    owns:
+      - project list
+      - folder/file navigation
+      - tree interactions
+      - context actions
+    verify:
+      - npm run build
+      - click through root, nested folder, and file selection
+  preview:
+    paths:
+      - src/components/FilePreview.tsx
+      - src/components/FileViewerModal.tsx
+    owns:
+      - markdown/code/html/image rendering
+      - KB preview iframe mode
+      - download URL and new-window behavior
+    invariants:
+      - modal preview and new-window behavior should match
+    verify:
+      - npm run build
+      - preview md/html/image/plain text
+  deployment:
+    paths:
+      - deploy.sh
+      - .github/workflows/deploy.yml
+      - server-setup.sh
+      - docs/runbook.md
+    owns:
+      - production build
+      - upload to TPR server
+      - Caddy-served path
+    invariants:
+      - production URL remains /xgkb/
+      - credentials should live outside committed source
+    verify:
+      - npm run build
+      - curl production URL after deploy
+

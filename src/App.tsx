@@ -16,7 +16,12 @@ type View = 'hub' | 'project';
 
 function App() {
   const { client, isLoading: clientLoading, error: clientError, initClient, loadSavedClient } = useApiClient();
-  const { projectId, isLoading: projectLoading, loadPersonalProjectId } = useProject(client);
+  const { projectId, isLoading: projectLoading, loadPersonalProjectId, setProjectId } = useProject(client);
+
+  // 客户端切换（AppKey 变更）时重置 projectId，避免用旧 projectId 查新 Key 的数据
+  useEffect(() => {
+    setProjectId(null);
+  }, [client, setProjectId]);
 
   // 空间列表 & 激活项
   const [spaces, setSpaces] = useState<SpaceEntry[]>(() => getConfig().spaces);

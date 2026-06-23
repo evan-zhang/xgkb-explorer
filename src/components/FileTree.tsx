@@ -15,13 +15,12 @@ interface FileTreeProps {
   projectId: string | null;
   onFileSelect: (file: FileListItem, path: string) => void;
   onFolderSelect?: (folder: FileListItem, path: string) => void;
-  /** 若传入，则以此 fileId 作为根节点（跳过 getLevel1Folders） */
   rootFileId?: string;
-  /** 为 true 时只渲染文件夹节点，隐藏文件 */
   foldersOnly?: boolean;
+  refreshKey?: number;
 }
 
-export function FileTree({ client, projectId, onFileSelect, onFolderSelect, rootFileId, foldersOnly }: FileTreeProps) {
+export function FileTree({ client, projectId, onFileSelect, onFolderSelect, rootFileId, foldersOnly, refreshKey }: FileTreeProps) {
   const { rootFiles, expandedFolders, isLoading, error, loadRootFiles, loadChildFiles, toggleFolder } =
     useFileTree(client);
 
@@ -39,6 +38,7 @@ export function FileTree({ client, projectId, onFileSelect, onFolderSelect, root
   // 加载根目录：若有 rootFileId 则直接用它加载子项，否则用 projectId 加载一级目录
   useEffect(() => {
     if (rootFileId) {
+      setChildFilesCache({}); // 清空缓存
       loadChildFiles(rootFileId).then((children) => {
         if (children.length > 0) {
           // 借用 loadRootFiles 的内部 setter 需通过 hack，改为直接利用缓存机制
@@ -49,7 +49,7 @@ export function FileTree({ client, projectId, onFileSelect, onFolderSelect, root
     } else if (projectId) {
       loadRootFiles(projectId);
     }
-  }, [projectId, rootFileId, loadRootFiles, loadChildFiles]);
+  }, [projectId, rootFileId, loadRootFiles, loadChildFiles, refreshKey]);
 
   // 加载子目录
   const loadFolderChildren = async (folderId: string) => {

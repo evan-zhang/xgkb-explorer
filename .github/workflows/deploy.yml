@@ -2,7 +2,7 @@ name: Deploy to tpr.20100706.xyz/xgkb/
 
 on:
   push:
-    branches: [claude/project-overview-t2y8ql]
+    branches: [main, claude/project-overview-t2y8ql]
   workflow_dispatch:
 
 jobs:
@@ -22,40 +22,36 @@ jobs:
       - name: Prepare staging dir on server
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: 89.34.227.182
-          port: 24079
-          username: root
-          password: "7X#8q7Fwv671?O"
-          script: mkdir -p /tmp/xgkb-deploy
+          host: ${{ secrets.XGKB_VPS_HOST }}
+          port: ${{ secrets.XGKB_VPS_PORT }}
+          username: ${{ secrets.XGKB_VPS_USER }}
+          password: ${{ secrets.XGKB_VPS_PASSWORD }}
+          script: mkdir -p /tmp/xgkb-deploy /var/www/xgkb-explorer
 
       - name: Upload dist to server
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: 89.34.227.182
-          port: 24079
-          username: root
-          password: "7X#8q7Fwv671?O"
+          host: ${{ secrets.XGKB_VPS_HOST }}
+          port: ${{ secrets.XGKB_VPS_PORT }}
+          username: ${{ secrets.XGKB_VPS_USER }}
+          password: ${{ secrets.XGKB_VPS_PASSWORD }}
           source: "dist/"
           target: "/tmp/xgkb-deploy"
           strip_components: 1
 
-      - name: Deploy & configure nginx SPA routing
+      - name: Deploy files only (Caddy owns web server config)
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: 89.34.227.182
-          port: 24079
-          username: root
-          password: "7X#8q7Fwv671?O"
+          host: ${{ secrets.XGKB_VPS_HOST }}
+          port: ${{ secrets.XGKB_VPS_PORT }}
+          username: ${{ secrets.XGKB_VPS_USER }}
+          password: ${{ secrets.XGKB_VPS_PASSWORD }}
           script: |
             set -e
-
-            # ---- 1. Deploy directory (Caddy serves from here) ----
             XGKB_DIR="/var/www/xgkb-explorer"
             echo ">>> Deploy dir: $XGKB_DIR"
-
-            # ---- 2. Copy new build ----
             cp -r /tmp/xgkb-deploy/* "$XGKB_DIR/"
             rm -rf /tmp/xgkb-deploy
             echo ">>> Files deployed."
-
+            echo ">>> Caddy serves HTTPS + API proxy; workflow does not modify web server config."
             echo ">>> Deployment complete: https://tpr.20100706.xyz/xgkb/"

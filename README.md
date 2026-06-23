@@ -124,6 +124,18 @@ npm run build
 
 ## 开发
 
+### AODW-Lite 工作方式
+
+本项目把轻量工程方法论也作为代码提交在仓库中。换开发工具或新成员接手时，先读：
+
+- `AGENTS.md`：AI/开发工具执行规则
+- `.aodw-next/06-project/ai-overview.md`：项目上下文与关键状态边界
+- `.aodw-next/06-project/modules-index.yaml`：模块边界、约束与验证方式
+- `docs/runbook.md`：本地构建、部署、线上冒烟检查
+- `docs/decisions/`：关键设计决策记录
+
+涉及 API、AppKey/projectId、空间目录、预览、部署或安全的改动，按 AODW-Lite 执行；小型样式/文案修复只需常规构建验证。
+
 ### 项目结构
 
 ```

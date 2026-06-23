@@ -2,7 +2,12 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Folder, FileText, ExternalLink, Link, Check, Share2, MoreHorizontal } from 'lucide-react';
 import type { KbApiClient } from '../lib/api';
 import type { FileListItem } from '../lib/types';
+import { getConfig } from '../lib/config';
 import { ContextMenu } from './ContextMenu';
+
+const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico'];
+const HTML_EXTS = ['html', 'htm'];
+const MD_EXTS = ['md', 'markdown', 'mdown', 'mkd'];
 
 interface FileExplorerProps {
   client: KbApiClient;
@@ -10,6 +15,7 @@ interface FileExplorerProps {
   projectId?: string;
   onFileSelect: (file: FileListItem) => void;
   onFolderNavigate: (folder: FileListItem) => void;
+  refreshKey?: number;
 }
 
 function formatDate(ts: number): string {
@@ -94,7 +100,7 @@ function ExplorerCard({ item, onClick, onContextMenu }: ExplorerCardProps) {
   );
 }
 
-export function FileExplorer({ client, folderId, projectId, onFileSelect, onFolderNavigate }: FileExplorerProps) {
+export function FileExplorer({ client, folderId, projectId, onFileSelect, onFolderNavigate, refreshKey }: FileExplorerProps) {
   const [files, setFiles] = useState<FileListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -112,14 +118,47 @@ export function FileExplorer({ client, folderId, projectId, onFileSelect, onFold
     setMenu({ item, x, y });
   }, []);
 
+  const openItemInNewTab = useCallback(async (item: FileListItem) => {
+    const suffix = (item.suffix || item.name.split('.').pop() || '').toLowerCase();
+    const { previewMode } = getConfig();
+
+    if (IMAGE_EXTS.includes(suffix)) {
+      const r = await client.getDownloadInfo(String(item.id), false);
+      if (r.ok && r.value.downloadUrl) window.open(r.value.downloadUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    if (previewMode === 'kb' && (MD_EXTS.includes(suffix) || HTML_EXTS.includes(suffix))) {
+      const format = MD_EXTS.includes(suffix) ? 'md' : 'html';
+      const r = await client.getPreviewTicket(String(item.id), format as 'md' | 'html', item.name);
+      if (r.ok) window.open(r.value.previewUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    if (HTML_EXTS.includes(suffix)) {
+      const r = await client.getDownloadInfo(String(item.id), false);
+      if (r.ok && r.value.downloadUrl) window.open(r.value.downloadUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    const content = await client.getFullFileContent(String(item.id));
+    if (content.ok) {
+      const w = window.open('', '_blank');
+      if (w) {
+        const esc = (v: string) => v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(item.name)}</title><style>body{font-family:monospace;max-width:860px;margin:40px auto;padding:0 24px;line-height:1.6;color:#1A1A1A}pre{white-space:pre-wrap;word-wrap:break-word}</style></head><body><pre>${esc(content.value)}</pre></body></html>`);
+        w.document.close();
+      }
+    }
+  }, [client]);
+
   const menuItems = menu ? [
     ...(menu.item.type !== 1 ? [
       {
         label: '在新标签页打开',
         icon: <ExternalLink className="w-4 h-4" />,
         onClick: async () => {
-          const r = await client.getDownloadInfo(String(menu.item.id), false);
-          if (r.ok && r.value.downloadUrl) window.open(r.value.downloadUrl, '_blank', 'noopener,noreferrer');
+          await openItemInNewTab(menu.item);
           setMenu(null);
         },
       },
@@ -128,8 +167,9 @@ export function FileExplorer({ client, folderId, projectId, onFileSelect, onFold
         icon: <Link className="w-4 h-4" />,
         onClick: async () => {
           const r = await client.getDownloadInfo(String(menu.item.id), false);
-          if (r.ok && r.value.downloadUrl) {
-            await navigator.clipboard.writeText(r.value.downloadUrl);
+          const url = r.ok ? (r.value.previewUrl || r.value.downloadUrl) : null;
+          if (url) {
+            await navigator.clipboard.writeText(url);
             showToast('链接已复制');
           }
           setMenu(null);
@@ -192,7 +232,7 @@ export function FileExplorer({ client, folderId, projectId, onFileSelect, onFold
 
     load();
     return () => { cancelled = true; };
-  }, [client, folderId, projectId]);
+  }, [client, folderId, projectId, refreshKey]);
 
   if (isLoading) {
     return (
