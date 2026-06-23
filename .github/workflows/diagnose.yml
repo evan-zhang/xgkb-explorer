@@ -1,0 +1,35 @@
+name: Diagnose server setup
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read server configuration
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 89.34.227.182
+          port: 24079
+          username: root
+          password: "7X#8q7Fwv671?O"
+          script: |
+            echo "=== Caddyfile ==="
+            cat /etc/caddy/Caddyfile 2>/dev/null || echo "(no Caddyfile found)"
+
+            echo ""
+            echo "=== /var/www/ contents ==="
+            ls -la /var/www/
+
+            echo ""
+            echo "=== Other Caddy configs ==="
+            find /etc/caddy -type f 2>/dev/null | xargs ls -la 2>/dev/null
+
+            echo ""
+            echo "=== Listening ports ==="
+            ss -tlnp
+
+            echo ""
+            echo "=== Running processes (web servers) ==="
+            ps aux | grep -E 'caddy|nginx|apache|node' | grep -v grep
