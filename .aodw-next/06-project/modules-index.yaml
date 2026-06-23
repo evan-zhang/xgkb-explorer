@@ -1,37 +1,35 @@
+version: 1
 project: xgkb-explorer
 updated: 2026-06-23
-workflow: AODW-Lite
+workflow: AODW-Next
 modules:
-  app-shell:
-    paths:
+  - name: app-shell
+    path: docs/modules/app-shell.md
+    root: src
+    related_files:
       - src/App.tsx
       - src/main.tsx
-    owns:
-      - top-level view routing
-      - config modal lifecycle
-      - client/project loading coordination
-    verify:
-      - npm run build
-      - browser smoke test after config changes
-  auth:
-    paths:
+  - name: auth
+    path: docs/modules/auth.md
+    root: src/lib
+    related_files:
       - src/lib/auth.ts
       - src/components/DingTalkLogin.tsx
-      - src/App.tsx
     owns:
-      - DingTalk launch and QR login
-      - Cwork token exchange
-      - local login session lifecycle
-      - auth callback cleanup
+      - DingTalk/Cwork auth flow
+      - local auth session persistence
+      - callback parsing and SDK loading
     invariants:
-      - do not hardcode callback host or path
-      - missing login must show login UI, not settings modal
-      - logout must force page reload to clear DingTalk SDK state
+      - unauthenticated users must not enter the app shell
+      - VITE_CWORK_APP_CODE is required for login APIs
+      - do not commit auth tokens
     verify:
       - npm run build
-      - browser smoke test DingTalk launch and callback
-  config:
-    paths:
+      - login/logout smoke test
+  - name: config
+    path: docs/modules/config.md
+    root: src/lib
+    related_files:
       - src/lib/config.ts
       - src/components/ConfigModal.tsx
     owns:
@@ -41,25 +39,20 @@ modules:
     invariants:
       - never commit real AppKeys
       - migrations must preserve existing localStorage users
+      - SpaceEntry uses directoryId; empty directoryId means personal root
     verify:
       - npm run build
       - switch AppKey and confirm projectId reloads
-  api-client:
-    paths:
+  - name: api-client
+    path: docs/modules/api-client.md
+    root: src/lib
+    related_files:
       - src/lib/api.ts
       - src/lib/types.ts
-    owns:
-      - Open API paths
-      - request headers and error mapping
-      - response type normalization
-    invariants:
-      - resultCode 1 is success
-      - projectId values are string-normalized
-    verify:
-      - npm run build
-      - smoke test getPersonalProjectId and getLevel1Folders
-  hooks:
-    paths:
+  - name: data-hooks
+    path: docs/modules/data-hooks.md
+    root: src/lib
+    related_files:
       - src/lib/hooks.ts
     owns:
       - project id state
@@ -69,51 +62,30 @@ modules:
     invariants:
       - projectId is tied to current client
       - empty directoryId means personal root
+      - non-empty directoryId loads via getChildFiles(directoryId)
     verify:
       - npm run build
       - switch between two AppKeys
-  project-ui:
-    paths:
+  - name: project-ui
+    path: docs/modules/project-ui.md
+    root: src/components
+    related_files:
       - src/components/ProjectsHub.tsx
       - src/components/ProjectDetail.tsx
-      - src/components/FileExplorer.tsx
       - src/components/FileTree.tsx
+      - src/components/FileExplorer.tsx
       - src/components/ContextMenu.tsx
-    owns:
-      - project list
-      - folder/file navigation
-      - tree interactions
-      - context actions
-    verify:
-      - npm run build
-      - click through root, nested folder, and file selection
-  preview:
-    paths:
+  - name: preview
+    path: docs/modules/preview.md
+    root: src/components
+    related_files:
       - src/components/FilePreview.tsx
       - src/components/FileViewerModal.tsx
-    owns:
-      - markdown/code/html/image rendering
-      - KB preview iframe mode
-      - download URL and new-window behavior
-    invariants:
-      - modal preview and new-window behavior should match
-    verify:
-      - npm run build
-      - preview md/html/image/plain text
-  deployment:
-    paths:
+  - name: deployment
+    path: docs/modules/deployment.md
+    root: .
+    related_files:
       - deploy.sh
       - .github/workflows/deploy.yml
-      - server-setup.sh
+      - DEPLOYMENT.md
       - docs/runbook.md
-    owns:
-      - production build
-      - upload to TPR server
-      - Caddy-served path
-    invariants:
-      - production URL remains /xgkb/
-      - credentials should live outside committed source
-    verify:
-      - npm run build
-      - curl production URL after deploy
-
