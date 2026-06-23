@@ -13,6 +13,23 @@ modules:
     verify:
       - npm run build
       - browser smoke test after config changes
+  auth:
+    paths:
+      - src/lib/auth.ts
+      - src/components/DingTalkLogin.tsx
+      - src/App.tsx
+    owns:
+      - DingTalk launch and QR login
+      - Cwork token exchange
+      - local login session lifecycle
+      - auth callback cleanup
+    invariants:
+      - do not hardcode callback host or path
+      - missing login must show login UI, not settings modal
+      - logout must force page reload to clear DingTalk SDK state
+    verify:
+      - npm run build
+      - browser smoke test DingTalk launch and callback
   config:
     paths:
       - src/lib/config.ts

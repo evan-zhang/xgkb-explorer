@@ -3,12 +3,23 @@
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Settings, ChevronDown } from 'lucide-react';
+import { Settings, ChevronDown, LogOut } from 'lucide-react';
 import { ConfigModal } from './components/ConfigModal';
+import { DingTalkLogin } from './components/DingTalkLogin';
 import { ProjectsHub } from './components/ProjectsHub';
 import { ProjectDetail } from './components/ProjectDetail';
 import { useApiClient, useProject, useProjectsHub } from './lib/hooks';
 import { saveConfig, getConfig } from './lib/config';
+import {
+  cleanDingTalkCallbackUrl,
+  clearAuthSession,
+  exchangeDingTalkCode,
+  getAuthSession,
+  parseDingTalkCallback,
+  saveAuthSession,
+  type AuthSession,
+  type DingTalkLoginResult,
+} from './lib/auth';
 import type { SpaceEntry } from './lib/config';
 import type { FileListItem } from './lib/types';
 
@@ -17,6 +28,9 @@ type View = 'hub' | 'project';
 function App() {
   const { client, isLoading: clientLoading, error: clientError, initClient, loadSavedClient } = useApiClient();
   const { projectId, isLoading: projectLoading, loadPersonalProjectId, setProjectId } = useProject(client);
+  const [authSession, setAuthSession] = useState<AuthSession | null>(() => getAuthSession());
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   // 客户端切换（AppKey 变更）时重置 projectId，避免用旧 projectId 查新 Key 的数据
   useEffect(() => {
@@ -41,10 +55,36 @@ function App() {
   const [selectedProject, setSelectedProject] = useState<FileListItem | null>(null);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
 
-  // 初始化：尝试加载已保存配置
+  // 初始化：优先处理钉钉回调；已登录时用 xgToken 初始化知识库客户端。
   useEffect(() => {
-    const hasConfig = loadSavedClient();
-    if (!hasConfig) setIsConfigModalOpen(true);
+    let cancelled = false;
+
+    async function initAuth() {
+      try {
+        const callback = parseDingTalkCallback(window.location.search);
+        if (callback) {
+          setIsAuthLoading(true);
+          const result = await exchangeDingTalkCode(callback.code, callback.dingCorpId);
+          if (cancelled) return;
+          const session = saveAuthSession(result);
+          setAuthSession(session);
+          cleanDingTalkCallbackUrl();
+          loadSavedClient(session.xgToken);
+          return;
+        }
+
+        const session = getAuthSession();
+        setAuthSession(session);
+        if (session) loadSavedClient(session.xgToken);
+      } catch (e) {
+        if (!cancelled) setAuthError(e instanceof Error ? e.message : String(e));
+      } finally {
+        if (!cancelled) setIsAuthLoading(false);
+      }
+    }
+
+    initAuth();
+    return () => { cancelled = true; };
   }, [loadSavedClient]);
 
   // 客户端就绪后获取个人空间 ID（默认根目录时需要）
@@ -93,6 +133,18 @@ function App() {
     setSelectedProject(null);
   }, [initClient]);
 
+  const handleLoginSuccess = useCallback((result: DingTalkLoginResult) => {
+    const session = saveAuthSession(result);
+    setAuthSession(session);
+    setAuthError(null);
+    loadSavedClient(session.xgToken);
+  }, [loadSavedClient]);
+
+  const handleLogout = useCallback(() => {
+    clearAuthSession();
+    window.location.reload();
+  }, []);
+
   const handleSelectProject = useCallback((project: FileListItem) => {
     setSelectedProject(project);
     setView('project');
@@ -105,6 +157,30 @@ function App() {
 
   const isConnecting = clientLoading || projectLoading;
   const activeSpaceName = activeSpace?.name || directoryName || activeSpace?.directoryId || '个人书架';
+
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center" style={{ background: '#FAFAF7', color: '#6B7280' }}>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-10 w-10 mx-auto mb-3" style={{ borderWidth: 2, borderStyle: 'solid', borderColor: '#ECECE6', borderTopColor: '#2563EB' }} />
+          <p className="text-sm">正在完成钉钉登录...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!authSession) {
+    return (
+      <>
+        <DingTalkLogin onLoginSuccess={handleLoginSuccess} />
+        {authError && (
+          <div className="fixed left-1/2 bottom-6 -translate-x-1/2 px-4 py-2 rounded-lg text-sm" style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>
+            {authError}
+          </div>
+        )}
+      </>
+    );
+  }
 
   return (
     <div className="h-screen flex flex-col bg-[#FAFAF7]">
@@ -172,14 +248,24 @@ function App() {
           )}
         </div>
 
-        <button
-          onClick={() => setIsConfigModalOpen(true)}
-          className="flex items-center justify-center hover:bg-[#F0EFEA] hover:text-[#1A1A1A] transition-colors flex-shrink-0"
-          style={{ width: 38, height: 38, borderRadius: 10, color: '#4B5563' }}
-          title="设置"
-        >
-          <Settings className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <button
+            onClick={() => setIsConfigModalOpen(true)}
+            className="flex items-center justify-center hover:bg-[#F0EFEA] hover:text-[#1A1A1A] transition-colors"
+            style={{ width: 38, height: 38, borderRadius: 10, color: '#4B5563' }}
+            title="设置"
+          >
+            <Settings className="w-5 h-5" />
+          </button>
+          <button
+            onClick={handleLogout}
+            className="flex items-center justify-center hover:bg-[#F0EFEA] hover:text-[#1A1A1A] transition-colors"
+            style={{ width: 38, height: 38, borderRadius: 10, color: '#4B5563' }}
+            title="退出登录"
+          >
+            <LogOut className="w-5 h-5" />
+          </button>
+        </div>
       </header>
 
       {/* 主内容区 */}

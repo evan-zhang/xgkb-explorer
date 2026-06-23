@@ -41,6 +41,8 @@ cp .env.example .env.local
 VITE_SERVER_URL=https://sg-al-cwork-web.mediportal.com.cn/open-api/
 VITE_APP_KEY=your_app_key_here
 VITE_PROJECT_ID=  # 可选，不填则自动获取个人空间
+VITE_CWORK_API_BASE_URL=https://cwork-api-test.xgjktech.com.cn
+VITE_CWORK_APP_CODE=your_cwork_app_code_here
 ```
 
 ### 3. 启动开发服务器
@@ -49,7 +51,7 @@ VITE_PROJECT_ID=  # 可选，不填则自动获取个人空间
 npm run dev
 ```
 
-访问 http://localhost:5173 使用应用。
+访问 http://127.0.0.1:5173/ 使用应用。
 
 ### 4. 构建生产版本
 
@@ -91,12 +93,23 @@ npm run build
 
 ## 使用说明
 
-### 首次配置
+### 首次登录
 
-1. 启动应用后，会自动弹出配置对话框
-2. 输入玄关知识库的 App Key
-3. 服务器地址通常使用默认值（生产环境）
-4. 点击"保存配置"
+1. 启动应用后，如果没有登录态，会进入钉钉登录页
+2. 手动选择企业后，点击按钮拉起钉钉客户端授权
+3. 可切换到扫码登录，用钉钉手机版扫码
+4. 登录成功后进入知识库浏览界面
+
+### 本地调试钉钉登录
+
+钉钉会校验 `redirect_uri` 的域名。直接使用 `http://127.0.0.1:5173/` 时，如果该域名不在钉钉开放平台「登录与分享」回调域名中，会提示 `redirect_uri参数错误`。
+本地调试时需要在钉钉开放平台配置允许 `127.0.0.1`，或使用已加入白名单的开发域名访问本应用。
+
+### 配置知识库
+
+- 点击右上角设置图标可配置玄关知识库服务器地址、App Key、预览方式和目录入口
+- 配置对话框不会在首次进入系统时主动弹出
+- 目录入口通过目录 ID 定位，名称可选
 
 ### 浏览文件
 

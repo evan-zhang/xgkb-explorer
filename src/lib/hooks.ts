@@ -14,7 +14,7 @@ export function useApiClient() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const initClient = useCallback((appKey: string, serverUrl?: string) => {
+  const initClient = useCallback((appKey: string, serverUrl?: string, persist = true) => {
     setIsLoading(true);
     setError(null);
     try {
@@ -24,7 +24,7 @@ export function useApiClient() {
         appKey,
       );
       setClient(newClient);
-      saveConfig({ appKey, serverUrl });
+      if (persist) saveConfig({ appKey, serverUrl });
       setIsLoading(false);
       return true;
     } catch (e) {
@@ -35,10 +35,11 @@ export function useApiClient() {
     }
   }, []);
 
-  const loadSavedClient = useCallback(() => {
+  const loadSavedClient = useCallback((appKeyOverride?: string) => {
     const config = getConfig();
-    if (config.appKey) {
-      return initClient(config.appKey, config.serverUrl);
+    const appKey = appKeyOverride || config.appKey;
+    if (appKey) {
+      return initClient(appKey, config.serverUrl, !appKeyOverride);
     }
     return false;
   }, [initClient]);

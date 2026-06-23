@@ -16,15 +16,18 @@ xgkb-explorer is a React/Vite browser app for browsing a user's Xuan Guan knowle
 
 ## Core Flow
 
-1. User saves an AppKey and server URL in the settings modal.
-2. `useApiClient` creates a `KbApiClient`.
-3. For the default personal-root entry, `useProject` calls `getPersonalProjectId`.
-4. `useProjectsHub` resolves the active configured directory:
+1. On first entry, the app checks local DingTalk/Cwork login state.
+2. If no login session exists, the DingTalk login page is shown and waits for a user click; the settings modal is not opened automatically.
+3. DingTalk OAuth uses the current app URL as callback.
+4. DingTalk callback exchanges the auth code for a Cwork `xgToken`, stores the session, and initializes `KbApiClient` with the session token for the current browser session.
+5. User can still save an AppKey and server URL manually in the settings modal.
+6. For the default personal-root entry, `useProject` calls `getPersonalProjectId`.
+7. `useProjectsHub` resolves the active configured directory:
    - empty `directoryId`: personal project id + root folders
    - non-empty `directoryId`: direct child lookup with `getChildFiles(directoryId)`
    - empty display name: resolve from `batchGetMeta(directoryId)` when possible
-5. Selecting a project loads files through the tree/detail components.
-6. Preview uses either local renderers or the KB preview service depending on saved config.
+8. Selecting a project loads files through the tree/detail components.
+9. Preview uses either local renderers or the KB preview service depending on saved config.
 
 ## Important State Boundary
 
@@ -38,6 +41,7 @@ Use full documentation only for changes that affect:
 
 - persisted config schema
 - API contracts or request paths
+- authentication and login callback handling
 - AppKey/projectId/directory resolution
 - preview strategy
 - deployment or runtime environment

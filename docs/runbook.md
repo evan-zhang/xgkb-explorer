@@ -9,7 +9,17 @@ npm install
 npm run dev
 ```
 
-Open the Vite URL shown in the terminal, normally `http://localhost:5173`.
+Open `http://127.0.0.1:5173/`.
+
+## Local DingTalk Login
+
+DingTalk validates the OAuth `redirect_uri` domain against the app's "Login and Share" callback-domain allowlist. `http://127.0.0.1:5173/` can fail that check if `127.0.0.1` is not allowed for the DingTalk app.
+
+For local login testing:
+
+1. Configure DingTalk to allow `127.0.0.1`, or serve the same app from a development domain that is configured in DingTalk's callback-domain allowlist.
+2. Open the app from that allowed host and start DingTalk login.
+3. The app derives the OAuth callback URL from the current browser URL.
 
 ## Build Check
 
