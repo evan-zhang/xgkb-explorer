@@ -4,7 +4,7 @@ Last updated: 2026-06-23
 
 ## Purpose
 
-xgkb-explorer is a React/Vite browser app for browsing a user's Xuan Guan knowledge base. It focuses on fast project-folder navigation, configurable knowledge-base spaces, and in-browser file preview.
+xgkb-explorer is a React/Vite browser app for browsing a user's Xuan Guan knowledge base. It focuses on fast project-folder navigation, configurable directory entries, and in-browser file preview.
 
 ## Current Production
 
@@ -18,12 +18,11 @@ xgkb-explorer is a React/Vite browser app for browsing a user's Xuan Guan knowle
 
 1. User saves an AppKey and server URL in the settings modal.
 2. `useApiClient` creates a `KbApiClient`.
-3. For personal spaces, `useProject` calls `getPersonalProjectId`.
-4. `useProjectsHub` resolves the active configured space:
-   - empty `spaceId`: personal project id
-   - non-empty `spaceId`: explicit knowledge-base space
-   - empty `path`: root folders
-   - non-empty `path`: segment-by-segment folder traversal
+3. For the default personal-root entry, `useProject` calls `getPersonalProjectId`.
+4. `useProjectsHub` resolves the active configured directory:
+   - empty `directoryId`: personal project id + root folders
+   - non-empty `directoryId`: direct child lookup with `getChildFiles(directoryId)`
+   - empty display name: resolve from `batchGetMeta(directoryId)` when possible
 5. Selecting a project loads files through the tree/detail components.
 6. Preview uses either local renderers or the KB preview service depending on saved config.
 
@@ -39,7 +38,7 @@ Use full documentation only for changes that affect:
 
 - persisted config schema
 - API contracts or request paths
-- AppKey/projectId/space resolution
+- AppKey/projectId/directory resolution
 - preview strategy
 - deployment or runtime environment
 - security posture

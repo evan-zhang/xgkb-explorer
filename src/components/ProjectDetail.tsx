@@ -8,7 +8,7 @@ import type { FileListItem } from '../lib/types';
 
 interface ProjectDetailProps {
   client: KbApiClient;
-  projectId: string;
+  projectId?: string;
   project: FileListItem;
   onBack: () => void;
 }

@@ -12,7 +12,7 @@ xgkb-explorer started as a focused browser app, but it now has several boundarie
 
 - user AppKey and server URL configuration
 - personal project id discovery
-- multi-space path resolution
+- directory-id resolution
 - localStorage schema migration
 - preview mode selection
 - production deployment under `/xgkb/`

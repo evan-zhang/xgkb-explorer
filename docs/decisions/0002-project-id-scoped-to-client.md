@@ -21,6 +21,6 @@ When AppKey or server URL changes and a new client is created, invalidate the ex
 ## Consequences
 
 - AppKey switching is safe across users.
-- Project hub loading must wait for a valid personal project id when the active space has no explicit `spaceId`.
+- Project hub loading must wait for a valid personal project id only when the active directory entry has an empty `directoryId`.
 - Future config changes that replace the client must preserve this invalidation behavior.
 

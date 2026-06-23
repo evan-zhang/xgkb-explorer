@@ -1,0 +1,97 @@
+[33mYou are using Node.js 22.0.0. Vite requires Node.js version 20.19+ or 22.12+. Please upgrade your Node.js version.[39m
+[2m17:35:20[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m [2m[console.error] [22mA component is changing a controlled input to be uncontrolled. This is likely caused by the value changing from a defined to undefined, which should not happen. Decide between using a controlled or uncontrolled input element for the lifetime of the component. More info: https://react.dev/link/controlled-components
+[2m17:36:29[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m [2m[console.error] [22mReact has detected a change in the order of Hooks called by App. This will lead to bugs and errors if not fixed. For more information, read the Rules of Hooks: https://react.dev/link/rules-of-hooks
+
+   Previous render            Next render
+   ------------------------------------------------------
+1. useState                   useState
+2. useState                   useState
+3. useState                   useState
+4. useCallback                useCallback
+5. useCallback                useCallback
+6. useState                   useState
+7. useState                   useState
+8. useState                   useState
+9. useCallback                useCallback
+10. useEffect                 useEffect
+11. useState                  useState
+12. useState                  useState
+13. useState                  useState
+14. useRef                    useRef
+15. useMemo                   useMemo
+16. useState                  useState
+17. useState                  useState
+18. useState                  useState
+19. useState                  useState
+20. useCallback               useState
+   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+[2m17:36:29[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m [31m[Unhandled error] [1mError[22m: Should have a queue. You are likely calling Hooks conditionally, which is not allowed. (https://react.dev/link/invalid-hook-call)
+[39m > updateReducerImpl ../../../xgkb/node_modules/.vite/deps/react-dom_client.js?v=8be130ea:4422:30
+ > updateReducer ../../../xgkb/node_modules/.vite/deps/react-dom_client.js?v=8be130ea:4418:11
+ > Object.useState ../../../xgkb/node_modules/.vite/deps/react-dom_client.js?v=8be130ea:13303:13
+ > exports.useState ../../../xgkb/node_modules/.vite/deps/react.js?v=8655e962:748:31
+ > useProjectsHub ../../../xgkb/src/lib/hooks.ts?t=1782207389402:165:28
+ > App ../../../xgkb/src/App.tsx?t=1782207389402:28:83
+ > Object.react_stack_bottom_frame ../../../xgkb/node_modules/.vite/deps/react-dom_client.js?v=8be130ea:12868:12
+ > renderWithHooks ../../../xgkb/node_modules/.vite/deps/react-dom_client.js?v=8be130ea:4213:19
+ > updateFunctionComponent ../../../xgkb/node_modules/.vite/deps/react-dom_client.js?v=8be130ea:5569:16
+ > beginWork ../../../xgkb/node_modules/.vite/deps/react-dom_client.js?v=8be130ea:6140:20
+
+[2m17:36:29[22m [33m[1m[vite][22m[39m [33m[2m(client)[22m[39m [2m[console.warn] [22mAn error occurred in the <App> component.
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://react.dev/link/error-boundaries to learn more about error boundaries.
+
+[2m17:38:14[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m [2m[console.error] [22mThe final argument passed to useEffect changed size between renders. The order and size of this array must remain constant.
+
+Previous: [[object Object], 1760191647853187073, async () => {
+		if (!client) {
+			setError("API 客户端未初始化");
+			return;
+		}
+		setIsLoading(true);
+		setError(null);
+		try {
+			const result = await client.getPersonalProjectId();
+			if (result.ok) {
+				const id = String(result.value);
+				setProjectId(id);
+				return id;
+			} else {
+				setError(result.error);
+				return null;
+			}
+		} catch (e) {
+			const errorMsg = e instanceof Error ? e.message : String(e);
+			setError(errorMsg);
+			return null;
+		} finally {
+			setIsLoading(false);
+		}
+	}]
+Incoming: [[object Object], 1760191647853187073, async () => {
+		if (!client) {
+			setError("API 客户端未初始化");
+			return;
+		}
+		setIsLoading(true);
+		setError(null);
+		try {
+			const result = await client.getPersonalProjectId();
+			if (result.ok) {
+				const id = String(result.value);
+				setProjectId(id);
+				return id;
+			} else {
+				setError(result.error);
+				return null;
+			}
+		} catch (e) {
+			const errorMsg = e instanceof Error ? e.message : String(e);
+			setError(errorMsg);
+			return null;
+		} finally {
+			setIsLoading(false);
+		}
+	}, ]

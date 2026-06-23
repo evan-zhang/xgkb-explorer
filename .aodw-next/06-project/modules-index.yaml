@@ -20,7 +20,7 @@ modules:
     owns:
       - localStorage schema
       - AppKey/server URL/preview mode persistence
-      - space entries and migration
+      - directory entries and migration
     invariants:
       - never commit real AppKeys
       - migrations must preserve existing localStorage users
@@ -46,12 +46,12 @@ modules:
       - src/lib/hooks.ts
     owns:
       - project id state
-      - folder traversal
+      - directory-id loading
       - file content loading
       - README/index preview lookup
     invariants:
       - projectId is tied to current client
-      - empty path means root
+      - empty directoryId means personal root
     verify:
       - npm run build
       - switch between two AppKeys

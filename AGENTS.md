@@ -29,8 +29,8 @@ Before finishing:
 
 - AppKey is user-specific and must not be committed.
 - Personal `projectId` belongs to the active `KbApiClient`; when AppKey/server changes, reload it.
-- The default space uses an empty `spaceId` and resolves through `getPersonalProjectId`.
-- Empty `path` means the knowledge-base root; non-empty paths are navigated segment by segment.
+- Directory entries are located by `directoryId`; an empty `directoryId` means the personal knowledge-base root.
+- Directory entry names are display-only and may be resolved from `batchGetMeta(directoryId)`.
 - Preview behavior is user-facing; keep self-render, KB preview, download URL, and new-window behavior consistent.
 - Production is served at `https://tpr.20100706.xyz/xgkb/` from `/var/www/xgkb-explorer`.
 

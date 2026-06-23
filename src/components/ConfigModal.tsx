@@ -22,8 +22,7 @@ interface EntryFormState {
   isNew: boolean;
   id: string;
   name: string;
-  spaceId: string;
-  path: string;
+  directoryId: string;
 }
 
 export function ConfigModal({ isOpen, onClose, onSave }: ConfigModalProps) {
@@ -42,7 +41,7 @@ export function ConfigModal({ isOpen, onClose, onSave }: ConfigModalProps) {
       setAppKey(config.appKey || '');
       setServerUrl(config.serverUrl || '');
       setPreviewMode(config.previewMode || 'self');
-      setSpaces(config.spaces?.length ? config.spaces : [{ id: 'personal', name: '个人书架', spaceId: '', path: '' }]);
+      setSpaces(config.spaces?.length ? config.spaces : [{ id: 'personal', name: '个人书架', directoryId: '' }]);
       setError(null);
       setSuccess(false);
       setEntryForm(null);
@@ -50,23 +49,21 @@ export function ConfigModal({ isOpen, onClose, onSave }: ConfigModalProps) {
   }, [isOpen]);
 
   const openAddForm = () => {
-    setEntryForm({ isNew: true, id: generateId(), name: '', spaceId: '', path: '' });
+    setEntryForm({ isNew: true, id: generateId(), name: '', directoryId: '' });
   };
 
   const openEditForm = (entry: SpaceEntry) => {
-    setEntryForm({ isNew: false, id: entry.id, name: entry.name, spaceId: entry.spaceId, path: entry.path });
+    setEntryForm({ isNew: false, id: entry.id, name: entry.name, directoryId: entry.directoryId });
   };
 
   const cancelEntryForm = () => setEntryForm(null);
 
   const saveEntry = () => {
     if (!entryForm) return;
-    const name = entryForm.name.trim() || (entryForm.spaceId ? `空间 ${entryForm.spaceId}` : '个人书架');
     const entry: SpaceEntry = {
       id: entryForm.id,
-      name,
-      spaceId: entryForm.spaceId.trim(),
-      path: entryForm.path.trim(),
+      name: entryForm.name.trim(),
+      directoryId: entryForm.directoryId.trim(),
     };
     if (entryForm.isNew) {
       setSpaces((prev) => [...prev, entry]);
@@ -206,11 +203,11 @@ export function ConfigModal({ isOpen, onClose, onSave }: ConfigModalProps) {
                   ) : (
                     <div className="flex items-center gap-3">
                       <div className="flex-1 min-w-0">
-                        <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1A1A' }}>{entry.name}</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1A1A' }}>
+                          {entry.name || entry.directoryId || '个人书架'}
+                        </div>
                         <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>
-                          {entry.spaceId ? `空间 ${entry.spaceId}` : '个人空间'}
-                          {' / '}
-                          {entry.path || '根目录'}
+                          {entry.directoryId ? `目录 ID: ${entry.directoryId}` : '个人空间根目录'}
                         </div>
                       </div>
                       <div className="flex items-center gap-0.5 flex-shrink-0">
@@ -247,7 +244,7 @@ export function ConfigModal({ isOpen, onClose, onSave }: ConfigModalProps) {
                   style={{ border: '1.5px dashed #D0D0CA', color: '#6B7280' }}
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  添加空间
+                  添加目录
                 </button>
               )}
             </div>
@@ -309,33 +306,23 @@ function EntryFormFields({
   return (
     <div className="space-y-2.5">
       <div>
-        <label className="block text-xs text-[#6B7280] mb-1">名称</label>
+        <label className="block text-xs text-[#6B7280] mb-1">目录 ID <span style={{ color: '#9CA3AF' }}>（留空 = 个人空间根目录）</span></label>
         <input
           type="text"
-          value={form.name}
-          onChange={(e) => onChange({ ...form, name: e.target.value })}
-          placeholder="如：个人书架、医疗知识库"
+          value={form.directoryId}
+          onChange={(e) => onChange({ ...form, directoryId: e.target.value })}
+          placeholder="输入目录 ID"
           className={inputCls}
           autoFocus
         />
       </div>
       <div>
-        <label className="block text-xs text-[#6B7280] mb-1">空间 ID <span style={{ color: '#9CA3AF' }}>（留空 = 个人空间）</span></label>
+        <label className="block text-xs text-[#6B7280] mb-1">名称 <span style={{ color: '#9CA3AF' }}>（可选，留空自动读取目录名称）</span></label>
         <input
           type="text"
-          value={form.spaceId}
-          onChange={(e) => onChange({ ...form, spaceId: e.target.value })}
-          placeholder="知识库空间 ID"
-          className={inputCls}
-        />
-      </div>
-      <div>
-        <label className="block text-xs text-[#6B7280] mb-1">目录路径 <span style={{ color: '#9CA3AF' }}>（留空 = 根目录）</span></label>
-        <input
-          type="text"
-          value={form.path}
-          onChange={(e) => onChange({ ...form, path: e.target.value })}
-          placeholder="如：Obsidian/projects"
+          value={form.name}
+          onChange={(e) => onChange({ ...form, name: e.target.value })}
+          placeholder="如：个人书架、医疗知识库"
           className={inputCls}
         />
       </div>

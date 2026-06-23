@@ -174,68 +174,60 @@ export function useFileContent(client: KbApiClient | null) {
 // ==================== Projects Hub Hook ====================
 
 /**
- * 加载指定空间+路径下的一级子目录作为"项目列表"。
- * - spaceId 为空 → 使用 personalProjectId（个人空间）
- * - spacePath 为空 → 直接展示该空间的一级目录（根目录）
- * - spacePath 非空 → 逐段导航后展示目标目录子项
+ * 加载配置目录下的一级子目录作为"项目列表"。
+ * - directoryId 为空 → 展示个人空间根目录
+ * - directoryId 非空 → 直接以目录 ID 加载子项
  */
 export function useProjectsHub(
   client: KbApiClient | null,
   personalProjectId: string | null,
-  spaceId: string,
-  spacePath: string,
+  directoryId: string,
 ) {
   const [projects, setProjects] = useState<FileListItem[]>([]);
   const [projectsDirFileId, setProjectsDirFileId] = useState<string | null>(null);
+  const [directoryName, setDirectoryName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const effectiveProjectId = spaceId || personalProjectId;
-    if (!client || !effectiveProjectId) return;
+    if (!client) return;
+    if (!directoryId && !personalProjectId) return;
 
     setIsLoading(true);
     setError(null);
     setProjects([]);
     setProjectsDirFileId(null);
+    setDirectoryName(null);
 
     try {
-      const segments = spacePath ? spacePath.split('/').filter(Boolean) : [];
-
-      const level1Result = await client.getLevel1Folders(effectiveProjectId);
-      if (!level1Result.ok) { setError(level1Result.error); return; }
-
-      if (segments.length === 0) {
-        // 根目录：直接展示一级文件夹
-        setProjectsDirFileId(effectiveProjectId);
+      if (!directoryId) {
+        const level1Result = await client.getLevel1Folders(personalProjectId!);
+        if (!level1Result.ok) { setError(level1Result.error); return; }
+        setProjectsDirFileId(personalProjectId);
+        setDirectoryName('个人书架');
         setProjects(level1Result.value.filter((f) => f.type === 1));
         return;
       }
 
-      let currentChildren: FileListItem[] = level1Result.value;
-      let targetFileId: string | null = null;
-      for (const segment of segments) {
-        const match = currentChildren.find((f) => f.name === segment && f.type === 1);
-        if (!match) {
-          setError(`找不到目录：${segment}（路径：${spacePath}）`);
-          return;
-        }
-        targetFileId = String(match.id);
-        const childResult = await client.getChildFiles(targetFileId);
-        if (!childResult.ok) { setError(childResult.error); return; }
-        currentChildren = childResult.value;
-      }
+      const childResult = await client.getChildFiles(directoryId);
+      if (!childResult.ok) { setError(childResult.error); return; }
 
-      setProjectsDirFileId(targetFileId);
-      setProjects(currentChildren.filter((f) => f.type === 1));
+      setProjectsDirFileId(directoryId);
+      setProjects(childResult.value.filter((f) => f.type === 1));
+
+      const metaResult = await client.batchGetMeta([directoryId]);
+      if (metaResult.ok) {
+        const meta = metaResult.value.find((item) => String(item.fileId) === directoryId);
+        if (meta?.name) setDirectoryName(meta.name);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setIsLoading(false);
     }
-  }, [client, personalProjectId, spaceId, spacePath]);
+  }, [client, personalProjectId, directoryId]);
 
-  return { projects, projectsDirFileId, isLoading, error, load };
+  return { projects, projectsDirFileId, directoryName, isLoading, error, load };
 }
 
 /**

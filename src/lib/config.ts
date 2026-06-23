@@ -7,9 +7,8 @@ import { DEFAULT_SERVER_URL } from './types';
 
 export interface SpaceEntry {
   id: string;
-  name: string;
-  spaceId: string;  // 空 = 个人空间
-  path: string;     // 空 = 根目录
+  name: string;        // empty = resolve from directoryId when possible
+  directoryId: string; // empty = personal root
 }
 
 export interface Config {
@@ -23,8 +22,7 @@ export interface Config {
 const DEFAULT_SPACE: SpaceEntry = {
   id: 'personal',
   name: '个人书架',
-  spaceId: '',
-  path: '',
+  directoryId: '',
 };
 
 const DEFAULT_CONFIG: Config = {
@@ -37,6 +35,28 @@ const DEFAULT_CONFIG: Config = {
 
 const STORAGE_KEY = 'xgkb_explorer_config';
 
+function normalizeSpaceEntry(entry: Partial<SpaceEntry> & {
+  spaceId?: unknown;
+  path?: unknown;
+  rootFileId?: unknown;
+}, index: number): SpaceEntry {
+  const id = typeof entry.id === 'string' && entry.id.trim()
+    ? entry.id
+    : `directory-${index + 1}`;
+
+  const directoryId = typeof entry.directoryId === 'string'
+    ? entry.directoryId.trim()
+    : typeof entry.rootFileId === 'string'
+      ? entry.rootFileId.trim()
+      : '';
+
+  return {
+    id,
+    name: typeof entry.name === 'string' ? entry.name.trim() : '',
+    directoryId,
+  };
+}
+
 export function getConfig(): Config {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -47,15 +67,19 @@ export function getConfig(): Config {
         parsed.spaces = [{
           id: 'personal',
           name: '个人书架',
-          spaceId: '',
-          path: parsed.projectsPath,
+          directoryId: '',
         }];
         parsed.activeSpaceId = 'personal';
         delete parsed.projectsPath;
       }
       const merged = { ...DEFAULT_CONFIG, ...parsed };
-      if (!merged.spaces?.length) merged.spaces = [DEFAULT_SPACE];
-      if (!merged.activeSpaceId) merged.activeSpaceId = merged.spaces[0].id;
+      merged.spaces = Array.isArray(parsed.spaces)
+        ? parsed.spaces.map(normalizeSpaceEntry)
+        : [DEFAULT_SPACE];
+      if (!merged.spaces.length) merged.spaces = [DEFAULT_SPACE];
+      if (!merged.activeSpaceId || !merged.spaces.some((space: SpaceEntry) => space.id === merged.activeSpaceId)) {
+        merged.activeSpaceId = merged.spaces[0].id;
+      }
       return merged;
     }
   } catch (e) {

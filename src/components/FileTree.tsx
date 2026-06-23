@@ -12,7 +12,7 @@ import { ContextMenu } from './ContextMenu';
 
 interface FileTreeProps {
   client: any;
-  projectId: string | null;
+  projectId?: string | null;
   onFileSelect: (file: FileListItem, path: string) => void;
   onFolderSelect?: (folder: FileListItem, path: string) => void;
   rootFileId?: string;

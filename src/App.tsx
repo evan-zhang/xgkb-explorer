@@ -34,8 +34,8 @@ function App() {
     [spaces, activeSpaceId],
   );
 
-  const { projects, isLoading: hubLoading, error: hubError, load: loadProjects } =
-    useProjectsHub(client, projectId, activeSpace?.spaceId ?? '', activeSpace?.path ?? '');
+  const { projects, isLoading: hubLoading, error: hubError, directoryName, load: loadProjects } =
+    useProjectsHub(client, projectId, activeSpace?.directoryId ?? '');
 
   const [view, setView] = useState<View>('hub');
   const [selectedProject, setSelectedProject] = useState<FileListItem | null>(null);
@@ -47,18 +47,18 @@ function App() {
     if (!hasConfig) setIsConfigModalOpen(true);
   }, [loadSavedClient]);
 
-  // 客户端就绪后获取个人空间 ID（个人空间时需要）
+  // 客户端就绪后获取个人空间 ID（默认根目录时需要）
   useEffect(() => {
-    if (client && !projectId) loadPersonalProjectId();
-  }, [client, projectId, loadPersonalProjectId]);
+    if (client && !projectId && !activeSpace?.directoryId) loadPersonalProjectId();
+  }, [client, projectId, loadPersonalProjectId, activeSpace?.directoryId]);
 
   // 条件满足时加载项目列表
   useEffect(() => {
     if (!client) return;
-    const needsPersonalId = !activeSpace?.spaceId;
+    const needsPersonalId = !activeSpace?.directoryId;
     if (needsPersonalId && !projectId) return;
     loadProjects();
-  }, [client, projectId, loadProjects, activeSpace?.spaceId]);
+  }, [client, projectId, loadProjects, activeSpace?.directoryId]);
 
   // 点击外部关闭空间切换下拉
   useEffect(() => {
@@ -104,6 +104,7 @@ function App() {
   }, []);
 
   const isConnecting = clientLoading || projectLoading;
+  const activeSpaceName = activeSpace?.name || directoryName || activeSpace?.directoryId || '个人书架';
 
   return (
     <div className="h-screen flex flex-col bg-[#FAFAF7]">
@@ -139,7 +140,7 @@ function App() {
                 style={{ fontSize: 13, color: '#4B5563', border: '1px solid #E8E8E5', background: '#FFFFFF' }}
               >
                 <span style={{ color: '#1A1A1A', fontWeight: 500, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {activeSpace?.name ?? '选择空间'}
+                  {activeSpaceName}
                 </span>
                 <ChevronDown className="w-3.5 h-3.5 flex-shrink-0" />
               </button>
@@ -157,13 +158,11 @@ function App() {
                       style={{ background: space.id === activeSpaceId ? '#F5F3EE' : undefined }}
                     >
                       <div style={{ fontSize: 13, fontWeight: space.id === activeSpaceId ? 600 : 400, color: '#1A1A1A' }}>
-                        {space.name}
+                        {space.name || (space.id === activeSpaceId ? activeSpaceName : space.directoryId || '个人书架')}
                         {space.id === activeSpaceId && <span style={{ fontSize: 11, color: '#2563EB', marginLeft: 6 }}>●</span>}
                       </div>
                       <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 1 }}>
-                        {space.spaceId ? `ID: ${space.spaceId}` : '个人空间'}
-                        {' / '}
-                        {space.path || '根目录'}
+                        {space.directoryId ? `目录 ID: ${space.directoryId}` : '个人空间根目录'}
                       </div>
                     </button>
                   ))}
@@ -192,7 +191,7 @@ function App() {
               <p className="text-sm">连接知识库...</p>
             </div>
           </div>
-        ) : !client || (!projectId && !activeSpace?.spaceId) ? (
+        ) : !client || (!projectId && !activeSpace?.directoryId) ? (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center px-8" style={{ color: '#6B7280' }}>
               <p className="text-sm mb-2" style={{ color: '#4B5563' }}>无法连接到知识库</p>
@@ -209,7 +208,7 @@ function App() {
         ) : view === 'project' && selectedProject ? (
           <ProjectDetail
             client={client}
-            projectId={projectId ?? activeSpace?.spaceId ?? ''}
+            projectId={projectId ?? undefined}
             project={selectedProject}
             onBack={handleBack}
           />
