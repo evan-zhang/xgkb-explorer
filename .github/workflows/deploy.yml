@@ -1,0 +1,61 @@
+name: Deploy to tpr.20100706.xyz/xgkb/
+
+on:
+  push:
+    branches: [claude/project-overview-t2y8ql]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install & Build
+        run: npm ci && npm run build
+
+      - name: Prepare staging dir on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 89.34.227.182
+          port: 24079
+          username: root
+          password: "7X#8q7Fwv671?O"
+          script: mkdir -p /tmp/xgkb-deploy
+
+      - name: Upload dist to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: 89.34.227.182
+          port: 24079
+          username: root
+          password: "7X#8q7Fwv671?O"
+          source: "dist/"
+          target: "/tmp/xgkb-deploy"
+          strip_components: 1
+
+      - name: Deploy & configure nginx SPA routing
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 89.34.227.182
+          port: 24079
+          username: root
+          password: "7X#8q7Fwv671?O"
+          script: |
+            set -e
+
+            # ---- 1. Deploy directory (Caddy serves from here) ----
+            XGKB_DIR="/var/www/xgkb-explorer"
+            echo ">>> Deploy dir: $XGKB_DIR"
+
+            # ---- 2. Copy new build ----
+            cp -r /tmp/xgkb-deploy/* "$XGKB_DIR/"
+            rm -rf /tmp/xgkb-deploy
+            echo ">>> Files deployed."
+
+            echo ">>> Deployment complete: https://tpr.20100706.xyz/xgkb/"

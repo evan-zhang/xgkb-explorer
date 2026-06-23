@@ -9,6 +9,8 @@ import type {
   DownloadInfoVO,
   FileListItem,
   FileMeta,
+  PreviewTicketVO,
+  ShareUrlVO,
 } from './types';
 import { API_PATHS, DEFAULT_SERVER_URL } from './types';
 
@@ -138,6 +140,20 @@ export class KbApiClient {
     });
   }
 
+  /** 生成文档预览链接（文档预览服务） */
+  async getPreviewTicket(
+    fileId: string,
+    format: 'md' | 'html',
+    title?: string,
+  ): Promise<ApiResult<PreviewTicketVO>> {
+    return this.request<PreviewTicketVO>('POST', API_PATHS.getPreviewTicket, {
+      bizType: 'kb',
+      bizId: fileId,
+      format,
+      title,
+    });
+  }
+
   /** 搜索文件 */
   async searchFile(params: {
     projectId: string;
@@ -145,6 +161,11 @@ export class KbApiClient {
     suffix?: string;
   }): Promise<ApiResult<FileListItem[]>> {
     return this.request<FileListItem[]>('GET', API_PATHS.searchFile, params);
+  }
+
+  /** 获取文件/文件夹的分享预览短链 */
+  async getShareUrl(fileId: string, source = 'open_api'): Promise<ApiResult<ShareUrlVO>> {
+    return this.request<ShareUrlVO>('GET', API_PATHS.getShareUrl, { fileId, source });
   }
 
   /** 子树扁平列举（含路径字段） */

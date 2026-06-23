@@ -21,6 +21,7 @@ export interface FileListItem {
   suffix?: string;
   size?: number;
   hasChild?: boolean;
+  createTime?: number;
   updateTime?: number;
 }
 
@@ -28,6 +29,7 @@ export interface FileListItem {
 export interface FileMeta {
   fileId: string | number;
   name: string;
+  createTime?: number;
   updateTime?: number;
   parentId?: string | number | null;
   deleted?: boolean;
@@ -53,6 +55,16 @@ export interface BatchGetContentItem {
   content?: string;
 }
 
+// 文档预览凭证
+export interface PreviewTicketVO {
+  previewUrl: string;
+}
+
+// 分享短链
+export interface ShareUrlVO {
+  shareUrl: string;
+}
+
 // API 路径常量
 export const API_PATHS = {
   getChildFiles: 'document-database/file/getChildFiles',
@@ -64,6 +76,8 @@ export const API_PATHS = {
   getPersonalProjectId: 'document-database/project/personal/getProjectId',
   searchFile: 'document-database/file/searchFile',
   listDescendantFiles: 'document-database/file/listDescendantFiles',
+  getPreviewTicket: 'doc-preview/api/preview/ticket',
+  getShareUrl: 'document-database/share/getShareUrl',
 } as const;
 
 // 默认服务器地址

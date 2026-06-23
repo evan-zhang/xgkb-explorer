@@ -2,149 +2,224 @@
  * 主应用组件
  */
 
-import { useState, useEffect, useCallback } from 'react';
-import { Settings, Search, BookOpen } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { Settings, ChevronDown } from 'lucide-react';
 import { ConfigModal } from './components/ConfigModal';
-import { FileTree } from './components/FileTree';
-import { FilePreview } from './components/FilePreview';
-import { useApiClient, useFileContent, useProject } from './lib/hooks';
+import { ProjectsHub } from './components/ProjectsHub';
+import { ProjectDetail } from './components/ProjectDetail';
+import { useApiClient, useProject, useProjectsHub } from './lib/hooks';
+import { saveConfig, getConfig } from './lib/config';
+import type { SpaceEntry } from './lib/config';
 import type { FileListItem } from './lib/types';
 
-function App() {
-  // API 客户端
-  const { client, isLoading: clientLoading, error: clientError, initClient, loadSavedClient } = useApiClient();
+type View = 'hub' | 'project';
 
-  // 项目 ID
+function App() {
+  const { client, isLoading: clientLoading, error: clientError, initClient, loadSavedClient } = useApiClient();
   const { projectId, isLoading: projectLoading, loadPersonalProjectId } = useProject(client);
 
-  // 文件内容
-  const { content, isLoading: contentLoading, error: contentError, loadFileContent, clearContent } =
-    useFileContent(client);
+  // 空间列表 & 激活项
+  const [spaces, setSpaces] = useState<SpaceEntry[]>(() => getConfig().spaces);
+  const [activeSpaceId, setActiveSpaceId] = useState<string>(() => getConfig().activeSpaceId);
+  const [showSpaceSwitcher, setShowSpaceSwitcher] = useState(false);
+  const switcherRef = useRef<HTMLDivElement>(null);
 
-  // UI 状态
+  const activeSpace = useMemo(
+    () => spaces.find((s) => s.id === activeSpaceId) ?? spaces[0],
+    [spaces, activeSpaceId],
+  );
+
+  const { projects, isLoading: hubLoading, error: hubError, load: loadProjects } =
+    useProjectsHub(client, projectId, activeSpace?.spaceId ?? '', activeSpace?.path ?? '');
+
+  const [view, setView] = useState<View>('hub');
+  const [selectedProject, setSelectedProject] = useState<FileListItem | null>(null);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<FileListItem | null>(null);
-  const [selectedFilePath, setSelectedFilePath] = useState<string>('');
 
-  // 初始化：尝试加载保存的配置
+  // 初始化：尝试加载已保存配置
   useEffect(() => {
     const hasConfig = loadSavedClient();
-    if (!hasConfig) {
-      // 没有保存的配置，打开设置对话框
-      setIsConfigModalOpen(true);
-    }
+    if (!hasConfig) setIsConfigModalOpen(true);
   }, [loadSavedClient]);
 
-  // 配置保存后，加载项目 ID
+  // 客户端就绪后获取个人空间 ID（个人空间时需要）
   useEffect(() => {
-    if (client && !projectId) {
-      loadPersonalProjectId();
-    }
+    if (client && !projectId) loadPersonalProjectId();
   }, [client, projectId, loadPersonalProjectId]);
 
-  // 处理配置保存
+  // 条件满足时加载项目列表
+  useEffect(() => {
+    if (!client) return;
+    const needsPersonalId = !activeSpace?.spaceId;
+    if (needsPersonalId && !projectId) return;
+    loadProjects();
+  }, [client, projectId, loadProjects, activeSpace?.spaceId]);
+
+  // 点击外部关闭空间切换下拉
+  useEffect(() => {
+    if (!showSpaceSwitcher) return;
+    const handler = (e: MouseEvent) => {
+      if (switcherRef.current && !switcherRef.current.contains(e.target as Node)) {
+        setShowSpaceSwitcher(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showSpaceSwitcher]);
+
+  // 切换空间
+  const switchSpace = useCallback((space: SpaceEntry) => {
+    setActiveSpaceId(space.id);
+    saveConfig({ activeSpaceId: space.id });
+    setShowSpaceSwitcher(false);
+    setView('hub');
+    setSelectedProject(null);
+  }, []);
+
+  // 配置保存回调
   const handleConfigSave = useCallback(async (appKey: string, serverUrl: string) => {
     const success = initClient(appKey, serverUrl);
-    if (!success) {
-      throw new Error('Failed to initialize API client');
-    }
+    if (!success) throw new Error('Failed to initialize API client');
+    // ConfigModal 已将 spaces/previewMode 写入 localStorage，此处同步到 state
+    const newConfig = getConfig();
+    setSpaces(newConfig.spaces);
+    setActiveSpaceId(newConfig.activeSpaceId);
+    setView('hub');
+    setSelectedProject(null);
   }, [initClient]);
 
-  // 处理文件选择
-  const handleFileSelect = useCallback((file: FileListItem, path: string) => {
-    setSelectedFile(file);
-    setSelectedFilePath(path);
-    clearContent();
-    
-    // 图片不走文本接口，FilePreview 组件会自己拉下载链接
-    const suffix = file.name.split('.').pop()?.toLowerCase() || '';
-    const isImage = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico'].includes(suffix);
-    if (!isImage) {
-      loadFileContent(String(file.id), file.name);
-    }
-  }, [clearContent, loadFileContent]);
+  const handleSelectProject = useCallback((project: FileListItem) => {
+    setSelectedProject(project);
+    setView('project');
+  }, []);
 
-  // 搜索功能（简化版：按文件名搜索）
-  const [searchQuery, setSearchQuery] = useState('');
-  const handleSearch = useCallback(() => {
-    // TODO: 实现搜索功能
-    console.log('搜索:', searchQuery);
-  }, [searchQuery]);
+  const handleBack = useCallback(() => {
+    setSelectedProject(null);
+    setView('hub');
+  }, []);
+
+  const isConnecting = clientLoading || projectLoading;
 
   return (
-    <div className="h-screen flex flex-col bg-white">
+    <div className="h-screen flex flex-col bg-[#FAFAF7]">
       {/* 顶部导航栏 */}
-      <header className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gray-50">
-        <div className="flex items-center gap-3">
-          <BookOpen className="w-6 h-6 text-blue-500" />
-          <h1 className="text-lg font-semibold">玄关知识库浏览器</h1>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* 搜索框 */}
-          <div className="relative">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              placeholder="搜索文件..."
-              className="pl-8 pr-4 py-1.5 text-sm border border-gray-300 rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-48"
-            />
-            <Search className="w-4 h-4 absolute left-2.5 top-2 text-gray-400" />
+      <header
+        className="flex items-center justify-between px-10 py-5 border-b border-[#ECECE6] flex-shrink-0"
+        style={{ background: 'rgba(250,250,247,0.92)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', position: 'relative', zIndex: 40 }}
+      >
+        {/* 品牌 + 空间切换 */}
+        <div className="flex items-center gap-4 min-w-0">
+          <div
+            className="flex items-center gap-2.5 flex-shrink-0 cursor-pointer"
+            onClick={() => view === 'project' && handleBack()}
+          >
+            <div style={{
+              width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+              background: 'linear-gradient(135deg, #1A1A1A 0%, #3A3A3A 100%)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#F5E6D3', fontFamily: 'Georgia, serif', fontWeight: 700, fontSize: 16,
+              boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.06), 0 1px 2px rgba(0,0,0,0.15)',
+            }}>玄</div>
+            <span style={{ fontFamily: 'Georgia, "Noto Serif SC", serif', fontSize: 20, fontWeight: 600, letterSpacing: '0.5px', color: '#1A1A1A', whiteSpace: 'nowrap' }}>
+              玄关知识库 <span style={{ color: '#6B7280', fontWeight: 400, fontSize: 16 }}>/ Explorer</span>
+            </span>
           </div>
 
-          {/* 设置按钮 */}
-          <button
-            onClick={() => setIsConfigModalOpen(true)}
-            className="p-2 hover:bg-gray-200 rounded-md"
-            title="设置"
-          >
-            <Settings className="w-5 h-5" />
-          </button>
-        </div>
-      </header>
+          {/* 空间切换下拉（仅 hub 视图显示） */}
+          {view === 'hub' && spaces.length > 0 && (
+            <div className="relative" ref={switcherRef}>
+              <button
+                onClick={() => setShowSpaceSwitcher((v) => !v)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-[#ECECE6] transition-colors"
+                style={{ fontSize: 13, color: '#4B5563', border: '1px solid #E8E8E5', background: '#FFFFFF' }}
+              >
+                <span style={{ color: '#1A1A1A', fontWeight: 500, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {activeSpace?.name ?? '选择空间'}
+                </span>
+                <ChevronDown className="w-3.5 h-3.5 flex-shrink-0" />
+              </button>
 
-      {/* 主内容区：分栏布局 */}
-      <main className="flex-1 flex overflow-hidden">
-        {/* 左侧：文件树 */}
-        <aside className="w-64 border-r border-gray-200 overflow-hidden flex flex-col">
-          {projectId && client ? (
-            <FileTree client={client} projectId={projectId} onFileSelect={handleFileSelect} />
-          ) : (
-            <div className="flex items-center justify-center h-full text-gray-500">
-              <div className="text-center">
-                {clientLoading || projectLoading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-500 mx-auto mb-2" />
-                    <p className="text-sm">加载中...</p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-sm mb-2">无法连接到知识库</p>
-                    <p className="text-xs text-gray-400">{clientError}</p>
-                  </>
-                )}
-              </div>
+              {showSpaceSwitcher && (
+                <div
+                  className="absolute top-full left-0 mt-1.5 bg-white rounded-xl shadow-lg border border-[#ECECE6] min-w-48 z-50 py-1 overflow-hidden"
+                  style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.12)' }}
+                >
+                  {spaces.map((space) => (
+                    <button
+                      key={space.id}
+                      onClick={() => switchSpace(space)}
+                      className="w-full text-left px-4 py-2.5 transition-colors hover:bg-[#F5F3EE]"
+                      style={{ background: space.id === activeSpaceId ? '#F5F3EE' : undefined }}
+                    >
+                      <div style={{ fontSize: 13, fontWeight: space.id === activeSpaceId ? 600 : 400, color: '#1A1A1A' }}>
+                        {space.name}
+                        {space.id === activeSpaceId && <span style={{ fontSize: 11, color: '#2563EB', marginLeft: 6 }}>●</span>}
+                      </div>
+                      <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 1 }}>
+                        {space.spaceId ? `ID: ${space.spaceId}` : '个人空间'}
+                        {' / '}
+                        {space.path || '根目录'}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
-        </aside>
+        </div>
 
-        {/* 右侧：文件预览 */}
-        <section className="flex-1 overflow-hidden">
-          <FilePreview
-            content={content}
-            fileName={selectedFile?.name}
-            filePath={selectedFilePath}
-            isLoading={contentLoading}
-            error={contentError}
+        <button
+          onClick={() => setIsConfigModalOpen(true)}
+          className="flex items-center justify-center hover:bg-[#F0EFEA] hover:text-[#1A1A1A] transition-colors flex-shrink-0"
+          style={{ width: 38, height: 38, borderRadius: 10, color: '#4B5563' }}
+          title="设置"
+        >
+          <Settings className="w-5 h-5" />
+        </button>
+      </header>
+
+      {/* 主内容区 */}
+      <main className="flex-1 flex overflow-hidden">
+        {isConnecting ? (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center" style={{ color: '#6B7280' }}>
+              <div className="animate-spin rounded-full h-10 w-10 mx-auto mb-3" style={{ borderWidth: 2, borderStyle: 'solid', borderColor: '#ECECE6', borderTopColor: '#2563EB' }} />
+              <p className="text-sm">连接知识库...</p>
+            </div>
+          </div>
+        ) : !client || (!projectId && !activeSpace?.spaceId) ? (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center px-8" style={{ color: '#6B7280' }}>
+              <p className="text-sm mb-2" style={{ color: '#4B5563' }}>无法连接到知识库</p>
+              <p className="text-xs" style={{ color: '#9CA3AF' }}>{clientError}</p>
+              <button
+                onClick={() => setIsConfigModalOpen(true)}
+                className="mt-4 px-4 py-2 text-sm text-white rounded-lg hover:opacity-90 transition-opacity"
+                style={{ background: '#1A1A1A' }}
+              >
+                打开设置
+              </button>
+            </div>
+          </div>
+        ) : view === 'project' && selectedProject ? (
+          <ProjectDetail
             client={client}
-            fileId={selectedFile ? String(selectedFile.id) : undefined}
+            projectId={projectId ?? activeSpace?.spaceId ?? ''}
+            project={selectedProject}
+            onBack={handleBack}
           />
-        </section>
+        ) : (
+          <ProjectsHub
+            client={client}
+            projects={projects}
+            isLoading={hubLoading}
+            error={hubError}
+            onSelectProject={handleSelectProject}
+            onReload={loadProjects}
+          />
+        )}
       </main>
 
-      {/* 配置模态框 */}
       <ConfigModal
         isOpen={isConfigModalOpen}
         onClose={() => setIsConfigModalOpen(false)}
