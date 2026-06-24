@@ -1,0 +1,26 @@
+{
+  "rt": "RT-XXX",
+  "execution_mode": "autopilot",
+  "execution_submode": "ralph-loop",
+  "phase": "initialized",
+  "iteration": 0,
+  "max_iterations": 20,
+  "stall_count": 0,
+  "goal": "见 rt-lite.md §7 完成条件清单",
+  "checklist": {
+    "plan_complete": false,
+    "tests_pass": false,
+    "lint_pass": false,
+    "guard_pass": false,
+    "docs_synced": false,
+    "auditor_pass": false
+  },
+  "signals": {
+    "same_file_edits": {},
+    "last_checklist_snapshot": null
+  },
+  "blockers": [],
+  "decisions": [],
+  "started_at": "<ISO8601>",
+  "updated_at": "<ISO8601>"
+}
