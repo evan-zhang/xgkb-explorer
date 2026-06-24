@@ -3,7 +3,8 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
-import { KbApiClient } from './api';
+import { OpenApiClient, TokenApiClient } from './api';
+import type { KbApiClient } from './api';
 import type { FileListItem } from '../lib/types';
 import { getConfig, saveConfig } from './config';
 
@@ -14,17 +15,14 @@ export function useApiClient() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const initClient = useCallback((appKey: string, serverUrl?: string, persist = true) => {
+  const initTokenClient = useCallback((accessToken: string, serverUrl?: string, persist = false) => {
     setIsLoading(true);
     setError(null);
     try {
       const config = getConfig();
-      const newClient = new KbApiClient(
-        serverUrl || config.serverUrl,
-        appKey,
-      );
+      const newClient = new TokenApiClient(accessToken, serverUrl || config.serverUrl);
       setClient(newClient);
-      if (persist) saveConfig({ appKey, serverUrl });
+      if (persist) saveConfig({ apiMode: 'token', serverUrl });
       setIsLoading(false);
       return true;
     } catch (e) {
@@ -35,16 +33,43 @@ export function useApiClient() {
     }
   }, []);
 
-  const loadSavedClient = useCallback((appKeyOverride?: string) => {
+  const initOpenApiClient = useCallback((appKey: string, serverUrl?: string, persist = true) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const config = getConfig();
+      const newClient = new OpenApiClient(appKey, serverUrl || config.serverUrl);
+      setClient(newClient);
+      if (persist) saveConfig({ apiMode: 'open-api', appKey, serverUrl });
+      setIsLoading(false);
+      return true;
+    } catch (e) {
+      const errorMsg = e instanceof Error ? e.message : String(e);
+      setError(errorMsg);
+      setIsLoading(false);
+      return false;
+    }
+  }, []);
+
+  const loadSavedClient = useCallback((accessToken?: string) => {
     const config = getConfig();
-    const appKey = appKeyOverride || config.appKey;
-    if (appKey) {
-      return initClient(appKey, config.serverUrl, !appKeyOverride);
+    if (config.apiMode === 'open-api' && config.appKey) {
+      return initOpenApiClient(config.appKey, config.serverUrl, false);
+    }
+    if (accessToken) {
+      return initTokenClient(accessToken, config.serverUrl);
     }
     return false;
-  }, [initClient]);
+  }, [initOpenApiClient, initTokenClient]);
 
-  return { client, isLoading, error, initClient, loadSavedClient };
+  return {
+    client,
+    isLoading,
+    error,
+    initOpenApiClient,
+    initTokenClient,
+    loadSavedClient,
+  };
 }
 
 // ==================== File Tree Hook ====================

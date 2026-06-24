@@ -29,4 +29,4 @@ The existing settings modal remains available from the header for knowledge-base
 - Real login requires `VITE_CWORK_APP_CODE`.
 - Local login requires opening the app from a host allowed by DingTalk's callback-domain settings.
 - Browser smoke testing must cover launch login, QR login, and callback cleanup.
-- If the Cwork `xgToken` is not accepted by the knowledge-base Open API `appKey` header, the user can still configure AppKey manually from settings; the auth boundary remains separate.
+- Knowledge-base access now uses the Cwork `xgToken` through `TokenApiClient` by default; Open API AppKey access remains only as an explicit compatibility mode.

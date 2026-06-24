@@ -1,6 +1,6 @@
 # xgkb-explorer AI Overview
 
-Last updated: 2026-06-23
+Last updated: 2026-06-24
 
 ## Purpose
 
@@ -12,15 +12,15 @@ xgkb-explorer is a React/Vite browser app for browsing a user's Xuan Guan knowle
 - Host: TPR server
 - Static root: `/var/www/xgkb-explorer`
 - Build output: `dist/`
-- API base can be either the upstream Open API URL or the same-origin proxy path configured by Caddy.
+- API base can be either the upstream service root URL or the same-origin proxy path configured by Caddy. Open API compatibility mode normalizes the same setting back to `/open-api/`.
 
 ## Core Flow
 
 1. On first entry, the app checks local DingTalk/Cwork login state.
 2. If no login session exists, the DingTalk login page is shown and waits for a user click; the settings modal is not opened automatically.
 3. DingTalk OAuth uses the current app URL as callback.
-4. DingTalk callback exchanges the auth code for a Cwork `xgToken`, stores the session, and initializes `KbApiClient` with the session token for the current browser session.
-5. User can still save an AppKey and server URL manually in the settings modal.
+4. DingTalk callback exchanges the auth code for a Cwork `xgToken`, stores the session, and initializes `TokenApiClient` with `access-token`.
+5. User can still switch to explicit Open API compatibility mode and save an AppKey in the settings modal.
 6. For the default personal-root entry, `useProject` calls `getPersonalProjectId`.
 7. `useProjectsHub` resolves the active configured directory:
    - empty `directoryId`: personal project id + root folders
@@ -31,7 +31,7 @@ xgkb-explorer is a React/Vite browser app for browsing a user's Xuan Guan knowle
 
 ## Important State Boundary
 
-`projectId` is scoped to the active API client. Changing AppKey or server URL must invalidate the old `projectId`; otherwise the app can query a new user with a stale project id.
+`projectId` is scoped to the active API client. Changing token, AppKey, auth mode, or server URL must invalidate the old `projectId`; otherwise the app can query a new user/session with a stale project id.
 
 ## AODW-Lite Policy
 

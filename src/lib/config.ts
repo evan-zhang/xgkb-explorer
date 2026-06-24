@@ -1,9 +1,11 @@
 /**
  * 配置管理
- * 支持通过环境变量或本地存储配置 appKey 和服务器地址
+ * 支持通过环境变量或本地存储配置知识库服务器地址和兼容 Open API AppKey
  */
 
 import { DEFAULT_SERVER_URL } from './types';
+
+export type ApiMode = 'token' | 'open-api';
 
 export interface SpaceEntry {
   id: string;
@@ -12,6 +14,7 @@ export interface SpaceEntry {
 }
 
 export interface Config {
+  apiMode: ApiMode;
   serverUrl: string;
   appKey: string;
   previewMode: 'self' | 'kb';
@@ -26,6 +29,7 @@ const DEFAULT_SPACE: SpaceEntry = {
 };
 
 const DEFAULT_CONFIG: Config = {
+  apiMode: 'token',
   serverUrl: import.meta.env.VITE_SERVER_URL || DEFAULT_SERVER_URL,
   appKey: import.meta.env.VITE_APP_KEY || '',
   previewMode: 'self',
@@ -73,6 +77,9 @@ export function getConfig(): Config {
         delete parsed.projectsPath;
       }
       const merged = { ...DEFAULT_CONFIG, ...parsed };
+      if (merged.apiMode !== 'token' && merged.apiMode !== 'open-api') {
+        merged.apiMode = 'token';
+      }
       merged.spaces = Array.isArray(parsed.spaces)
         ? parsed.spaces.map(normalizeSpaceEntry)
         : [DEFAULT_SPACE];
@@ -99,7 +106,8 @@ export function saveConfig(config: Partial<Config>): void {
 }
 
 export function isConfigValid(): boolean {
-  return !!getConfig().appKey;
+  const config = getConfig();
+  return config.apiMode === 'token' || !!config.appKey;
 }
 
 export function clearConfig(): void {

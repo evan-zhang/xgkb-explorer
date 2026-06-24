@@ -4,18 +4,28 @@
  */
 
 import { useState, useEffect } from 'react';
-import { X, Key, Globe, Check, AlertCircle, Plus, Pencil, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, Key, Globe, Check, AlertCircle, Plus, Pencil, Trash2, ChevronDown, ChevronUp, ShieldCheck } from 'lucide-react';
 import { getConfig, saveConfig } from '../lib/config';
-import type { SpaceEntry } from '../lib/config';
+import type { ApiMode, SpaceEntry } from '../lib/config';
 
 interface ConfigModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (appKey: string, serverUrl: string) => void;
+  onSave: (options: { apiMode: ApiMode; appKey: string; serverUrl: string }) => void | Promise<void>;
 }
 
 function generateId() {
   return Math.random().toString(36).slice(2, 10);
+}
+
+function isValidServerUrl(value: string) {
+  if (value.startsWith('/')) return true;
+  try {
+    new URL(value);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 interface EntryFormState {
@@ -26,6 +36,7 @@ interface EntryFormState {
 }
 
 export function ConfigModal({ isOpen, onClose, onSave }: ConfigModalProps) {
+  const [apiMode, setApiMode] = useState<ApiMode>('token');
   const [appKey, setAppKey] = useState('');
   const [serverUrl, setServerUrl] = useState('');
   const [previewMode, setPreviewMode] = useState<'self' | 'kb'>('self');
@@ -38,6 +49,7 @@ export function ConfigModal({ isOpen, onClose, onSave }: ConfigModalProps) {
   useEffect(() => {
     if (isOpen) {
       const config = getConfig();
+      setApiMode(config.apiMode || 'token');
       setAppKey(config.appKey || '');
       setServerUrl(config.serverUrl || '');
       setPreviewMode(config.previewMode || 'self');
@@ -95,15 +107,21 @@ export function ConfigModal({ isOpen, onClose, onSave }: ConfigModalProps) {
   const validateAndSave = async () => {
     setError(null);
     setSuccess(false);
-    if (!appKey.trim()) { setError('请输入 App Key'); return; }
+    if (apiMode === 'open-api' && !appKey.trim()) { setError('请输入 App Key'); return; }
     if (!serverUrl.trim()) { setError('请输入服务器地址'); return; }
-    try { new URL(serverUrl); } catch { setError('服务器地址格式不正确'); return; }
+    if (!isValidServerUrl(serverUrl.trim())) { setError('服务器地址格式不正确'); return; }
 
     setIsValidating(true);
     try {
       // 保存空间和预览模式到 localStorage
-      saveConfig({ previewMode, spaces });
-      await onSave(appKey.trim(), serverUrl.trim());
+      saveConfig({
+        apiMode,
+        appKey: appKey.trim(),
+        serverUrl: serverUrl.trim(),
+        previewMode,
+        spaces,
+      });
+      await onSave({ apiMode, appKey: appKey.trim(), serverUrl: serverUrl.trim() });
       setSuccess(true);
       setTimeout(onClose, 900);
     } catch (e) {
@@ -138,15 +156,26 @@ export function ConfigModal({ isOpen, onClose, onSave }: ConfigModalProps) {
             <p style={{ fontSize: 11, fontWeight: 600, color: '#9CA3AF', letterSpacing: '0.08em', marginBottom: 12, textTransform: 'uppercase' }}>连接</p>
             <div className="space-y-3">
               <div>
-                <label className={labelCls}><Key className="w-3 h-3 inline mr-1" />App Key</label>
-                <input
-                  type="password"
-                  value={appKey}
-                  onChange={(e) => setAppKey(e.target.value)}
-                  placeholder="输入玄关知识库 App Key"
-                  className={inputCls}
-                  disabled={isValidating}
-                />
+                <label className={labelCls}><ShieldCheck className="w-3 h-3 inline mr-1" />认证方式</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    ['token', '登录 Token'],
+                    ['open-api', 'Open API'],
+                  ] as const).map(([mode, label]) => (
+                    <button
+                      key={mode}
+                      onClick={() => setApiMode(mode)}
+                      className="py-2 px-3 rounded-lg text-sm font-medium transition-all"
+                      style={apiMode === mode
+                        ? { background: '#1A1A1A', color: '#FFFFFF', border: '1px solid #1A1A1A' }
+                        : { background: '#FAFAF7', color: '#4B5563', border: '1px solid #DCDCD6' }
+                      }
+                      disabled={isValidating}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div>
                 <label className={labelCls}><Globe className="w-3 h-3 inline mr-1" />服务器地址</label>
@@ -154,11 +183,24 @@ export function ConfigModal({ isOpen, onClose, onSave }: ConfigModalProps) {
                   type="text"
                   value={serverUrl}
                   onChange={(e) => setServerUrl(e.target.value)}
-                  placeholder="https://..."
+                  placeholder="https://... 或 /xgkb-api/"
                   className={inputCls}
                   disabled={isValidating}
                 />
               </div>
+              {apiMode === 'open-api' && (
+                <div>
+                  <label className={labelCls}><Key className="w-3 h-3 inline mr-1" />App Key</label>
+                  <input
+                    type="password"
+                    value={appKey}
+                    onChange={(e) => setAppKey(e.target.value)}
+                    placeholder="输入玄关知识库 App Key"
+                    className={inputCls}
+                    disabled={isValidating}
+                  />
+                </div>
+              )}
             </div>
           </section>
 

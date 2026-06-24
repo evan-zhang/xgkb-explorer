@@ -1,6 +1,8 @@
 /**
  * 玄关知识库 API 客户端（浏览器版本）
- * 简化自 openclaw-xgkb-sync 的 KbApiClient，适配浏览器环境
+ *
+ * UI 层只依赖 KbApiClient 的方法契约；具体鉴权方式由 TokenApiClient
+ * 或 OpenApiClient 决定。
  */
 
 import type {
@@ -12,16 +14,37 @@ import type {
   PreviewTicketVO,
   ShareUrlVO,
 } from './types';
-import { API_PATHS, DEFAULT_SERVER_URL } from './types';
+import {
+  API_PATHS,
+  DEFAULT_OPEN_API_SERVER_URL,
+  DEFAULT_TOKEN_SERVER_URL,
+} from './types';
 
-export class KbApiClient {
+function ensureTrailingSlash(value: string): string {
+  return value.endsWith('/') ? value : `${value}/`;
+}
+
+function stripOpenApiSuffix(value: string): string {
+  return value.replace(/\/open-api\/?$/i, '/');
+}
+
+export function normalizeTokenServerUrl(serverUrl: string = DEFAULT_TOKEN_SERVER_URL): string {
+  const value = serverUrl.trim() || DEFAULT_TOKEN_SERVER_URL;
+  return ensureTrailingSlash(stripOpenApiSuffix(value));
+}
+
+export function normalizeOpenApiServerUrl(serverUrl: string = DEFAULT_OPEN_API_SERVER_URL): string {
+  return `${normalizeTokenServerUrl(serverUrl)}open-api/`;
+}
+
+export abstract class KbApiClient {
   private readonly serverUrl: string;
-  private readonly appKey: string;
 
-  constructor(serverUrl: string = DEFAULT_SERVER_URL, appKey: string) {
-    this.serverUrl = serverUrl.endsWith('/') ? serverUrl : serverUrl + '/';
-    this.appKey = appKey;
+  protected constructor(serverUrl: string) {
+    this.serverUrl = ensureTrailingSlash(serverUrl);
   }
+
+  protected abstract getAuthHeaders(): Record<string, string>;
 
   private async request<T>(
     method: 'GET' | 'POST',
@@ -47,7 +70,7 @@ export class KbApiClient {
         method,
         headers: {
           'Content-Type': 'application/json',
-          appKey: this.appKey,
+          ...this.getAuthHeaders(),
         },
         body,
       });
@@ -177,5 +200,31 @@ export class KbApiClient {
     includeFolders?: boolean;
   }): Promise<ApiResult<{ files: FileListItem[]; nextCursor?: string | null }>> {
     return this.request('GET', API_PATHS.listDescendantFiles, params);
+  }
+}
+
+export class TokenApiClient extends KbApiClient {
+  private readonly accessToken: string;
+
+  constructor(accessToken: string, serverUrl: string = DEFAULT_TOKEN_SERVER_URL) {
+    super(normalizeTokenServerUrl(serverUrl));
+    this.accessToken = accessToken;
+  }
+
+  protected getAuthHeaders(): Record<string, string> {
+    return { 'access-token': this.accessToken };
+  }
+}
+
+export class OpenApiClient extends KbApiClient {
+  private readonly appKey: string;
+
+  constructor(appKey: string, serverUrl: string = DEFAULT_OPEN_API_SERVER_URL) {
+    super(normalizeOpenApiServerUrl(serverUrl));
+    this.appKey = appKey;
+  }
+
+  protected getAuthHeaders(): Record<string, string> {
+    return { appKey: this.appKey };
   }
 }

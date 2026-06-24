@@ -26,13 +26,20 @@ import type { FileListItem } from './lib/types';
 type View = 'hub' | 'project';
 
 function App() {
-  const { client, isLoading: clientLoading, error: clientError, initClient, loadSavedClient } = useApiClient();
+  const {
+    client,
+    isLoading: clientLoading,
+    error: clientError,
+    initOpenApiClient,
+    initTokenClient,
+    loadSavedClient,
+  } = useApiClient();
   const { projectId, isLoading: projectLoading, loadPersonalProjectId, setProjectId } = useProject(client);
   const [authSession, setAuthSession] = useState<AuthSession | null>(() => getAuthSession());
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
-  // 客户端切换（AppKey 变更）时重置 projectId，避免用旧 projectId 查新 Key 的数据
+  // 客户端切换（Token/AppKey/服务地址变更）时重置 projectId，避免用旧 projectId 查新会话的数据
   useEffect(() => {
     setProjectId(null);
   }, [client, setProjectId]);
@@ -54,6 +61,8 @@ function App() {
   const [view, setView] = useState<View>('hub');
   const [selectedProject, setSelectedProject] = useState<FileListItem | null>(null);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
 
   // 初始化：优先处理钉钉回调；已登录时用 xgToken 初始化知识库客户端。
   useEffect(() => {
@@ -112,6 +121,17 @@ function App() {
     return () => document.removeEventListener('mousedown', handler);
   }, [showSpaceSwitcher]);
 
+  useEffect(() => {
+    if (!showAccountMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(e.target as Node)) {
+        setShowAccountMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showAccountMenu]);
+
   // 切换空间
   const switchSpace = useCallback((space: SpaceEntry) => {
     setActiveSpaceId(space.id);
@@ -122,8 +142,16 @@ function App() {
   }, []);
 
   // 配置保存回调
-  const handleConfigSave = useCallback(async (appKey: string, serverUrl: string) => {
-    const success = initClient(appKey, serverUrl);
+  const handleConfigSave = useCallback(async (options: {
+    apiMode: 'token' | 'open-api';
+    appKey: string;
+    serverUrl: string;
+  }) => {
+    const success = options.apiMode === 'token'
+      ? authSession?.xgToken
+        ? initTokenClient(authSession.xgToken, options.serverUrl, true)
+        : false
+      : initOpenApiClient(options.appKey, options.serverUrl);
     if (!success) throw new Error('Failed to initialize API client');
     // ConfigModal 已将 spaces/previewMode 写入 localStorage，此处同步到 state
     const newConfig = getConfig();
@@ -131,7 +159,7 @@ function App() {
     setActiveSpaceId(newConfig.activeSpaceId);
     setView('hub');
     setSelectedProject(null);
-  }, [initClient]);
+  }, [authSession?.xgToken, initOpenApiClient, initTokenClient]);
 
   const handleLoginSuccess = useCallback((result: DingTalkLoginResult) => {
     const session = saveAuthSession(result);
@@ -157,6 +185,8 @@ function App() {
 
   const isConnecting = clientLoading || projectLoading;
   const activeSpaceName = activeSpace?.name || directoryName || activeSpace?.directoryId || '个人书架';
+  const userName = authSession?.user.name?.trim() || '用户';
+  const userAvatar = authSession?.user.avatar;
 
   if (isAuthLoading) {
     return (
@@ -248,23 +278,53 @@ function App() {
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 flex-shrink-0">
+        <div className="relative flex-shrink-0" ref={accountMenuRef}>
           <button
-            onClick={() => setIsConfigModalOpen(true)}
-            className="flex items-center justify-center hover:bg-[#F0EFEA] hover:text-[#1A1A1A] transition-colors"
-            style={{ width: 38, height: 38, borderRadius: 10, color: '#4B5563' }}
-            title="设置"
+            onClick={() => setShowAccountMenu((v) => !v)}
+            className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[#F0EFEA] transition-colors"
+            style={{ color: '#4B5563', border: '1px solid #E8E8E5', background: '#FFFFFF' }}
+            title={userName}
           >
-            <Settings className="w-5 h-5" />
+            {userAvatar && (
+              <span
+                className="flex items-center justify-center overflow-hidden flex-shrink-0"
+                style={{ width: 28, height: 28, borderRadius: 999, background: '#1A1A1A' }}
+              >
+                <img src={userAvatar} alt={userName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </span>
+            )}
+            <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#1A1A1A', fontSize: 13, fontWeight: 500 }}>
+              {userName}
+            </span>
+            <ChevronDown className="w-3.5 h-3.5 flex-shrink-0" />
           </button>
-          <button
-            onClick={handleLogout}
-            className="flex items-center justify-center hover:bg-[#F0EFEA] hover:text-[#1A1A1A] transition-colors"
-            style={{ width: 38, height: 38, borderRadius: 10, color: '#4B5563' }}
-            title="退出登录"
-          >
-            <LogOut className="w-5 h-5" />
-          </button>
+
+          {showAccountMenu && (
+            <div
+              className="absolute top-full right-0 mt-1.5 bg-white rounded-xl shadow-lg border border-[#ECECE6] min-w-40 z-50 py-1 overflow-hidden"
+              style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.12)' }}
+            >
+              <button
+                onClick={() => {
+                  setShowAccountMenu(false);
+                  setIsConfigModalOpen(true);
+                }}
+                className="w-full flex items-center gap-2 px-4 py-2.5 text-left transition-colors hover:bg-[#F5F3EE]"
+                style={{ color: '#4B5563', fontSize: 13 }}
+              >
+                <Settings className="w-4 h-4" />
+                设置
+              </button>
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-2 px-4 py-2.5 text-left transition-colors hover:bg-[#F5F3EE]"
+                style={{ color: '#DC2626', fontSize: 13 }}
+              >
+                <LogOut className="w-4 h-4" />
+                退出登录
+              </button>
+            </div>
+          )}
         </div>
       </header>
 

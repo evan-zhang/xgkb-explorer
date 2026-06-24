@@ -81,4 +81,6 @@ export const API_PATHS = {
 } as const;
 
 // 默认服务器地址
-export const DEFAULT_SERVER_URL = 'https://sg-al-cwork-web.mediportal.com.cn/open-api/';
+export const DEFAULT_TOKEN_SERVER_URL = 'https://sg-al-cwork-web.mediportal.com.cn/';
+export const DEFAULT_OPEN_API_SERVER_URL = `${DEFAULT_TOKEN_SERVER_URL}open-api/`;
+export const DEFAULT_SERVER_URL = DEFAULT_TOKEN_SERVER_URL;

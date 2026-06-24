@@ -4,7 +4,7 @@
 
 ## 功能特性
 
-- 🔐 **安全认证**：通过 App Key 对接玄关知识库 API
+- 🔐 **安全认证**：通过钉钉/Cwork 登录 token 访问玄关知识库 API
 - 📁 **目录树浏览**：左侧面板展示知识库目录结构，支持递归展开/折叠
 - 📄 **文件预览**：右侧面板渲染文件内容，支持 Markdown 和代码高亮
 - 🔍 **搜索功能**：支持按文件名搜索（可选功能）
@@ -38,8 +38,8 @@ cp .env.example .env.local
 编辑 `.env.local`，填入你的配置：
 
 ```env
-VITE_SERVER_URL=https://sg-al-cwork-web.mediportal.com.cn/open-api/
-VITE_APP_KEY=your_app_key_here
+VITE_SERVER_URL=https://sg-al-cwork-web.mediportal.com.cn/
+VITE_APP_KEY=  # 可选，仅 Open API 兼容模式需要
 VITE_PROJECT_ID=  # 可选，不填则自动获取个人空间
 VITE_CWORK_API_BASE_URL=https://cwork-api-test.xgjktech.com.cn
 VITE_CWORK_APP_CODE=your_cwork_app_code_here
@@ -107,7 +107,7 @@ npm run build
 
 ### 配置知识库
 
-- 点击右上角设置图标可配置玄关知识库服务器地址、App Key、预览方式和目录入口
+- 点击右上角设置图标可配置认证方式、服务器地址、预览方式和目录入口
 - 配置对话框不会在首次进入系统时主动弹出
 - 目录入口通过目录 ID 定位，名称可选
 
@@ -126,7 +126,7 @@ npm run build
 
 ## API 参考
 
-本项目使用玄关知识库 Open API，主要接口：
+本项目默认使用登录 token 访问玄关知识库 API，并保留 Open API 兼容模式。主要接口：
 
 - `getPersonalProjectId`：获取个人知识库空间 ID
 - `getLevel1Folders`：获取一级目录列表
@@ -187,7 +187,7 @@ xgkb-explorer/
 ### Q: 提示"无法连接到知识库"？
 
 A: 检查以下几点：
-- App Key 是否正确
+- 登录 token 是否有效，或 Open API 兼容模式下 AppKey 是否正确
 - 网络是否正常
 - 服务器地址是否正确
 - 浏览器控制台是否有错误信息
@@ -199,9 +199,9 @@ A: 可能原因：
 - 文件编码不是 UTF-8
 - API 返回内容为空
 
-### Q: 如何获取 App Key？
+### Q: 还需要 App Key 吗？
 
-A: 联系玄关知识库管理员获取 API 密钥。
+A: 正常登录后不需要。只有手动切换到 Open API 兼容模式时，才需要联系玄关知识库管理员获取 API 密钥。
 
 ## 许可证
 

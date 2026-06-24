@@ -1,6 +1,6 @@
 # xgkb-explorer Runbook
 
-Last updated: 2026-06-23
+Last updated: 2026-06-24
 
 ## Local Development
 
@@ -60,16 +60,18 @@ Before relying on it, migrate server credentials to GitHub Secrets and reference
 After any deployment, verify:
 
 - `https://tpr.20100706.xyz/xgkb/` loads without a blank page
-- settings modal can save AppKey and server URL
+- settings modal can save authentication mode, server URL, preview mode, and directory entries
 - personal bookshelf loads root folders
-- switching AppKey reloads personal project id and folder list
+- switching authentication mode or server URL reloads personal project id and folder list
 - a nested folder opens
 - Markdown/plain text preview works
 - image or HTML preview opens in the modal and new window
 
 ## Debugging API Access
 
-Use a safe test AppKey supplied by the user for the current session only. Do not commit it.
+Normal knowledge-base access uses the DingTalk/Cwork `xgToken` as the `access-token` request header. Open API AppKey access is available only through the explicit compatibility mode.
+
+Use a safe test AppKey supplied by the user for the current session only when debugging Open API compatibility. Do not commit it.
 
 Check in this order:
 
@@ -78,7 +80,7 @@ Check in this order:
 3. `getChildFiles` for a known folder
 4. Preview/download endpoint only after browsing works
 
-If direct upstream URL works but production fails, inspect Caddy proxy/path behavior. If both fail, inspect AppKey, API response body, and browser console.
+If direct upstream URL works but production fails, inspect Caddy proxy/path behavior. If both fail, inspect the auth mode, token/AppKey, API response body, and browser console.
 
 ## Rollback
 
