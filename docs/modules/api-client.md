@@ -9,8 +9,8 @@ related_files:
 
 ## 1. 职责（Responsibilities）
 
-- 封装玄关知识库 Open API。
-- 统一 appKey header、GET/POST 参数、resultCode 错误映射。
+- 封装玄关知识库 Token API 和显式 Open API 兼容模式。
+- 统一鉴权 header、GET/POST 参数、resultCode 错误映射。
 - 提供项目、文件、内容、预览和分享相关调用。
 
 ## 2. 目录结构（Files）
@@ -37,8 +37,10 @@ related_files:
 
 ## 5. 常见流程说明（Workflows）
 
-- `getPersonalProjectId` → `getLevel1Folders` / `getChildFiles` → 文件详情/预览 API。
+- `findAllProjects` → `getLevel1Folders(projectId)` → 文件详情/预览 API。
+- `getChildFiles(directoryId)` → 文件详情/预览 API。
 
 ## 6. 历史行为（History）
 
 - 2026-06-22：确认切换 AppKey 后需要重新获取 personal project id。
+- 2026-06-24：增加 `findAllProjects` 作为默认可见空间列表入口。

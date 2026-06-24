@@ -2,9 +2,9 @@ import { useState, useCallback, Fragment } from 'react';
 import { ChevronLeft, RefreshCw } from 'lucide-react';
 import { FileTree } from './FileTree';
 import { FileExplorer } from './FileExplorer';
-import { FileViewerModal } from './FileViewerModal';
 import type { KbApiClient } from '../lib/api';
 import type { FileListItem } from '../lib/types';
+import { openFileInNewTab } from '../lib/preview';
 
 interface ProjectDetailProps {
   client: KbApiClient;
@@ -20,18 +20,19 @@ interface BreadcrumbItem {
 
 export function ProjectDetail({ client, projectId, project, onBack }: ProjectDetailProps) {
   const rootId = String(project.id);
+  const isProjectRoot = project.entryKind === 'project';
+  const effectiveProjectId = isProjectRoot ? rootId : projectId;
 
   const [currentFolderId, setCurrentFolderId] = useState(rootId);
   const [breadcrumb, setBreadcrumb] = useState<BreadcrumbItem[]>([
     { id: rootId, name: project.name },
   ]);
-  const [modalFile, setModalFile] = useState<FileListItem | null>(null);
   const [treeRefreshKey, setTreeRefreshKey] = useState(0);
   const [explorerRefreshKey, setExplorerRefreshKey] = useState(0);
 
   const openFile = useCallback((file: FileListItem) => {
-    setModalFile(file);
-  }, []);
+    void openFileInNewTab(client, file);
+  }, [client]);
 
   const handleFolderNavigate = useCallback((folder: FileListItem) => {
     setCurrentFolderId(String(folder.id));
@@ -67,7 +68,7 @@ export function ProjectDetail({ client, projectId, project, onBack }: ProjectDet
               style={{ fontSize: 13, color: '#6B7280', paddingBottom: 12 }}
             >
               <ChevronLeft className="w-3.5 h-3.5" />
-              返回书架
+              返回列表
             </button>
             <button
               onClick={() => setTreeRefreshKey(k => k + 1)}
@@ -86,8 +87,8 @@ export function ProjectDetail({ client, projectId, project, onBack }: ProjectDet
         <div className="flex-1 overflow-hidden">
           <FileTree
             client={client}
-            projectId={projectId}
-            rootFileId={rootId}
+            projectId={effectiveProjectId}
+            rootFileId={isProjectRoot ? undefined : rootId}
             onFileSelect={openFile}
             onFolderSelect={handleTreeFolderSelect}
             foldersOnly
@@ -139,22 +140,14 @@ export function ProjectDetail({ client, projectId, project, onBack }: ProjectDet
           <FileExplorer
             client={client}
             folderId={currentFolderId}
-            projectId={projectId}
+            projectId={effectiveProjectId}
+            isProjectRoot={isProjectRoot && currentFolderId === rootId}
             onFileSelect={openFile}
             onFolderNavigate={handleFolderNavigate}
             refreshKey={explorerRefreshKey}
           />
         </div>
       </section>
-
-      {/* 文件预览图层 */}
-      {modalFile && (
-        <FileViewerModal
-          client={client}
-          file={modalFile}
-          onClose={() => setModalFile(null)}
-        />
-      )}
     </div>
   );
 }

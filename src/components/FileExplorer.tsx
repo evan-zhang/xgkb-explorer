@@ -2,17 +2,14 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Folder, FileText, ExternalLink, Link, Check, Share2, MoreHorizontal } from 'lucide-react';
 import type { KbApiClient } from '../lib/api';
 import type { FileListItem } from '../lib/types';
-import { getConfig } from '../lib/config';
+import { openFileInNewTab } from '../lib/preview';
 import { ContextMenu } from './ContextMenu';
-
-const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico'];
-const HTML_EXTS = ['html', 'htm'];
-const MD_EXTS = ['md', 'markdown', 'mdown', 'mkd'];
 
 interface FileExplorerProps {
   client: KbApiClient;
   folderId: string;
   projectId?: string;
+  isProjectRoot?: boolean;
   onFileSelect: (file: FileListItem) => void;
   onFolderNavigate: (folder: FileListItem) => void;
   refreshKey?: number;
@@ -100,7 +97,15 @@ function ExplorerCard({ item, onClick, onContextMenu }: ExplorerCardProps) {
   );
 }
 
-export function FileExplorer({ client, folderId, projectId, onFileSelect, onFolderNavigate, refreshKey }: FileExplorerProps) {
+export function FileExplorer({
+  client,
+  folderId,
+  projectId,
+  isProjectRoot,
+  onFileSelect,
+  onFolderNavigate,
+  refreshKey,
+}: FileExplorerProps) {
   const [files, setFiles] = useState<FileListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -119,37 +124,7 @@ export function FileExplorer({ client, folderId, projectId, onFileSelect, onFold
   }, []);
 
   const openItemInNewTab = useCallback(async (item: FileListItem) => {
-    const suffix = (item.suffix || item.name.split('.').pop() || '').toLowerCase();
-    const { previewMode } = getConfig();
-
-    if (IMAGE_EXTS.includes(suffix)) {
-      const r = await client.getDownloadInfo(String(item.id), false);
-      if (r.ok && r.value.downloadUrl) window.open(r.value.downloadUrl, '_blank', 'noopener,noreferrer');
-      return;
-    }
-
-    if (previewMode === 'kb' && (MD_EXTS.includes(suffix) || HTML_EXTS.includes(suffix))) {
-      const format = MD_EXTS.includes(suffix) ? 'md' : 'html';
-      const r = await client.getPreviewTicket(String(item.id), format as 'md' | 'html', item.name);
-      if (r.ok) window.open(r.value.previewUrl, '_blank', 'noopener,noreferrer');
-      return;
-    }
-
-    if (HTML_EXTS.includes(suffix)) {
-      const r = await client.getDownloadInfo(String(item.id), false);
-      if (r.ok && r.value.downloadUrl) window.open(r.value.downloadUrl, '_blank', 'noopener,noreferrer');
-      return;
-    }
-
-    const content = await client.getFullFileContent(String(item.id));
-    if (content.ok) {
-      const w = window.open('', '_blank');
-      if (w) {
-        const esc = (v: string) => v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(item.name)}</title><style>body{font-family:monospace;max-width:860px;margin:40px auto;padding:0 24px;line-height:1.6;color:#1A1A1A}pre{white-space:pre-wrap;word-wrap:break-word}</style></head><body><pre>${esc(content.value)}</pre></body></html>`);
-        w.document.close();
-      }
-    }
+    await openFileInNewTab(client, item);
   }, [client]);
 
   const menuItems = menu ? [
@@ -166,7 +141,7 @@ export function FileExplorer({ client, folderId, projectId, onFileSelect, onFold
         label: '复制文件链接',
         icon: <Link className="w-4 h-4" />,
         onClick: async () => {
-          const r = await client.getDownloadInfo(String(menu.item.id), false);
+          const r = await client.getDownloadInfo(String(menu.item.id));
           const url = r.ok ? (r.value.previewUrl || r.value.downloadUrl) : null;
           if (url) {
             await navigator.clipboard.writeText(url);
@@ -196,7 +171,9 @@ export function FileExplorer({ client, folderId, projectId, onFileSelect, onFold
     setError(null);
 
     const load = async () => {
-      const result = await client.getChildFiles(folderId);
+      const result = isProjectRoot && projectId
+        ? await client.getLevel1Folders(projectId)
+        : await client.getChildFiles(folderId);
       if (cancelled) return;
 
       if (!result.ok) {
@@ -232,7 +209,7 @@ export function FileExplorer({ client, folderId, projectId, onFileSelect, onFold
 
     load();
     return () => { cancelled = true; };
-  }, [client, folderId, projectId, refreshKey]);
+  }, [client, folderId, projectId, isProjectRoot, refreshKey]);
 
   if (isLoading) {
     return (

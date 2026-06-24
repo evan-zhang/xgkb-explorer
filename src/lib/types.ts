@@ -17,10 +17,24 @@ export interface FileListItem {
   id: string | number;
   name: string;
   type: number; // 1 = 文件夹，其他 = 文件
+  entryKind?: 'folder' | 'project' | 'space';
   parentId?: string | number | null;
   suffix?: string;
   size?: number;
   hasChild?: boolean;
+  createTime?: number;
+  updateTime?: number;
+}
+
+// 知识库空间/项目
+export interface ProjectInfo {
+  id?: string | number;
+  projectId?: string | number;
+  fileId?: string | number;
+  name?: string;
+  projectName?: string;
+  title?: string;
+  type?: number;
   createTime?: number;
   updateTime?: number;
 }
@@ -67,9 +81,10 @@ export interface ShareUrlVO {
 
 // API 路径常量
 export const API_PATHS = {
+  findAllProjects: 'document-database/project/findAllProjects',
   getChildFiles: 'document-database/file/getChildFiles',
   getLevel1Folders: 'document-database/file/getLevel1Folders',
-  getDownloadInfo: 'document-database/file/getDownloadInfo',
+  getDownloadInfo: 'document-database/upDownload/getDownloadInfo',
   getFullFileContent: 'document-database/file/getFullFileContent',
   batchGetContent: 'document-database/ai/batchGetContent',
   batchGetMeta: 'document-database/file/batchGetMeta',

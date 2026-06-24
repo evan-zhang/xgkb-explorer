@@ -61,8 +61,10 @@ After any deployment, verify:
 
 - `https://tpr.20100706.xyz/xgkb/` loads without a blank page
 - settings modal can save authentication mode, server URL, preview mode, and directory entries
-- personal bookshelf loads root folders
-- switching authentication mode or server URL reloads personal project id and folder list
+- default entry loads the current user's visible spaces
+- selecting a visible space loads root folders that can be added to the bookshelf
+- clicking a root folder stores it as a bookshelf entry and loads its child projects
+- switching authentication mode or server URL reloads the visible space list
 - a nested folder opens
 - Markdown/plain text preview works
 - image or HTML preview opens in the modal and new window
@@ -75,8 +77,8 @@ Use a safe test AppKey supplied by the user for the current session only when de
 
 Check in this order:
 
-1. `getPersonalProjectId`
-2. `getLevel1Folders`
+1. `findAllProjects?nameKey=&bizCode=ordinary&appCode=kz_doc`
+2. `getLevel1Folders` for a visible project
 3. `getChildFiles` for a known folder
 4. Preview/download endpoint only after browsing works
 

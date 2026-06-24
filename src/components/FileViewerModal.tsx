@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { X, AlertCircle, ExternalLink, Link, Check } from 'lucide-react';
-import { FilePreview } from './FilePreview';
 import { getConfig } from '../lib/config';
 import type { KbApiClient } from '../lib/api';
 import type { FileListItem } from '../lib/types';
@@ -32,9 +31,8 @@ const MD_EXTS = ['md', 'markdown', 'mdown', 'mkd'];
 type PreviewState =
   | { phase: 'loading' }
   | { phase: 'image'; url: string }
-  | { phase: 'html'; url: string }      // 真实 HTML 文件，iframe src 加载
+  | { phase: 'download-url'; url: string } // 自渲染模式：getDownloadInfo.downloadUrl
   | { phase: 'iframe'; url: string }    // KB 预览服务外链
-  | { phase: 'content'; content: string }
   | { phase: 'error'; message: string };
 
 export function FileViewerModal({ client, file, onClose }: FileViewerModalProps) {
@@ -67,19 +65,10 @@ export function FileViewerModal({ client, file, onClose }: FileViewerModalProps)
       return;
     }
 
-    // HTML 文件（自渲染模式）：用下载 URL 在 iframe 中加载真实文件
-    if (HTML_EXTS.includes(suffix)) {
-      client.getDownloadInfo(fileId, false).then((r) => {
-        if (r.ok && r.value.downloadUrl) setState({ phase: 'html', url: r.value.downloadUrl });
-        else setState({ phase: 'error', message: r.ok ? '无法获取 HTML 文件链接' : r.error });
-      });
-      return;
-    }
-
-    // MD、代码、文本 — 走 FilePreview 自渲染
-    client.getFullFileContent(fileId).then((r) => {
-      if (r.ok) setState({ phase: 'content', content: r.value });
-      else setState({ phase: 'error', message: r.error });
+    // 自渲染模式：downloadUrl 就是预览地址，不再调用 getFullFileContent。
+    client.getDownloadInfo(fileId).then((r) => {
+      if (r.ok && r.value.downloadUrl) setState({ phase: 'download-url', url: r.value.downloadUrl });
+      else setState({ phase: 'error', message: r.ok ? '无法获取文件预览地址' : r.error });
     });
   }, [file, client]);
 
@@ -101,17 +90,7 @@ export function FileViewerModal({ client, file, onClose }: FileViewerModalProps)
   };
 
   const openInNewTab = async () => {
-    const escapeHtml = (s: string) => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    if (state.phase === 'content') {
-      // 自渲染内容：在新窗口中用同样的渲染方式打开
-      const w = window.open('', '_blank');
-      if (!w) return;
-      w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(file.name)}</title><style>body{font-family:-apple-system,Noto Sans SC,sans-serif;max-width:860px;margin:40px auto;padding:0 24px;line-height:1.8;color:#1A1A1A}pre{background:#f5f5f2;padding:16px;border-radius:8px;overflow-x:auto;font-size:14px}code{background:#f0efe9;padding:2px 6px;border-radius:3px;font-size:14px}pre code{background:none;padding:0}h1,h2,h3{font-family:Georgia,serif}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px 12px}th{background:#f5f5f2}blockquote{border-left:4px solid #ddd;margin:0;padding-left:16px;color:#666}img{max-width:100%}a{color:#2563EB}</style></head><body><pre>${escapeHtml(state.content)}</pre></body></html>`);
-      w.document.close();
-      return;
-    }
-    // 其他阶段直接用当前 URL
-    if (state.phase === 'iframe' || state.phase === 'image' || state.phase === 'html') {
+    if (state.phase === 'iframe' || state.phase === 'image' || state.phase === 'download-url') {
       if (state.url) window.open(state.url, '_blank', 'noopener,noreferrer');
     }
   };
@@ -154,7 +133,7 @@ export function FileViewerModal({ client, file, onClose }: FileViewerModalProps)
           </div>
         );
 
-      case 'html':
+      case 'download-url':
       case 'iframe':
         return (
           <iframe
@@ -165,20 +144,6 @@ export function FileViewerModal({ client, file, onClose }: FileViewerModalProps)
           />
         );
 
-      case 'content':
-        return (
-          <div className="flex-1 overflow-hidden">
-            <FilePreview
-              content={state.content}
-              fileName={file.name}
-              filePath={undefined}
-              isLoading={false}
-              error={null}
-              client={client}
-              fileId={String(file.id)}
-            />
-          </div>
-        );
     }
   };
 

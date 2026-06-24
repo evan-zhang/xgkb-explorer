@@ -10,7 +10,7 @@ export type ApiMode = 'token' | 'open-api';
 export interface SpaceEntry {
   id: string;
   name: string;        // empty = resolve from directoryId when possible
-  directoryId: string; // empty = personal root
+  directoryId: string; // empty = all visible projects for the current user
 }
 
 export interface Config {
@@ -24,7 +24,7 @@ export interface Config {
 
 const DEFAULT_SPACE: SpaceEntry = {
   id: 'personal',
-  name: '个人书架',
+  name: '全部空间',
   directoryId: '',
 };
 
@@ -54,9 +54,14 @@ function normalizeSpaceEntry(entry: Partial<SpaceEntry> & {
       ? entry.rootFileId.trim()
       : '';
 
+  const rawName = typeof entry.name === 'string' ? entry.name.trim() : '';
+  const name = !directoryId && id === 'personal' && rawName === '个人书架'
+    ? DEFAULT_SPACE.name
+    : rawName;
+
   return {
     id,
-    name: typeof entry.name === 'string' ? entry.name.trim() : '',
+    name,
     directoryId,
   };
 }
@@ -70,7 +75,7 @@ export function getConfig(): Config {
       if (parsed.projectsPath && !parsed.spaces) {
         parsed.spaces = [{
           id: 'personal',
-          name: '个人书架',
+          name: '全部空间',
           directoryId: '',
         }];
         parsed.activeSpaceId = 'personal';

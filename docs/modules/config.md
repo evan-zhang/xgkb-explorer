@@ -10,7 +10,7 @@ related_files:
 ## 1. 职责（Responsibilities）
 
 - 管理 xgkb-explorer 的持久配置。
-- 提供设置弹窗，配置 AppKey、serverUrl、previewMode 和书架空间。
+- 提供设置弹窗，配置 AppKey、serverUrl、previewMode 和空间入口。
 - 维护 localStorage schema 和迁移逻辑。
 
 ## 2. 目录结构（Files）
@@ -23,7 +23,7 @@ related_files:
 - 不得提交真实 AppKey。
 - schema 变更必须迁移已有 localStorage 用户。
 - 当前 `SpaceEntry` 使用 `{ id, name, directoryId }`。
-- 空 `directoryId` 表示个人空间根目录；非空 `directoryId` 表示目录型书架入口。
+- 空 `directoryId` 表示当前登录用户可见空间列表；非空 `directoryId` 表示目录型入口。
 - 旧版 `spaceId/path/rootFileId` 等配置必须尽量迁移或保持可读。
 
 ## 4. 依赖关系（Dependencies）
@@ -42,3 +42,4 @@ related_files:
 ## 6. 历史行为（History）
 
 - 2026-06-23：主线已引入 `directoryId` 书架配置模型，降低空间 ID + 路径配置复杂度。
+- 2026-06-24：空 `directoryId` 默认入口改为当前用户可见空间列表。

@@ -40,11 +40,8 @@ export function FileTree({ client, projectId, onFileSelect, onFolderSelect, root
     if (rootFileId) {
       setChildFilesCache({}); // 清空缓存
       loadChildFiles(rootFileId).then((children) => {
-        if (children.length > 0) {
-          // 借用 loadRootFiles 的内部 setter 需通过 hack，改为直接利用缓存机制
-          // 将 rootFileId 的子项当作"根文件"写入缓存，展开 rootFileId
-          setChildFilesCache((prev) => ({ ...prev, [rootFileId]: children }));
-        }
+        // 将 rootFileId 的子项当作"根文件"写入缓存，空目录也要落缓存避免一直显示加载中。
+        setChildFilesCache((prev) => ({ ...prev, [rootFileId]: children }));
       });
     } else if (projectId) {
       loadRootFiles(projectId);
@@ -179,7 +176,7 @@ export function FileTree({ client, projectId, onFileSelect, onFolderSelect, root
     ? (childFilesCache[rootFileId] || [])
     : rootFiles;
 
-  const effectiveLoading = isLoading || (rootFileId && effectiveRootFiles.length === 0 && !error);
+  const effectiveLoading = isLoading || Boolean(rootFileId && !(rootFileId in childFilesCache) && !error);
 
   if (effectiveLoading) {
     return (

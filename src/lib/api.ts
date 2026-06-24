@@ -12,6 +12,7 @@ import type {
   FileListItem,
   FileMeta,
   PreviewTicketVO,
+  ProjectInfo,
   ShareUrlVO,
 } from './types';
 import {
@@ -35,6 +36,19 @@ export function normalizeTokenServerUrl(serverUrl: string = DEFAULT_TOKEN_SERVER
 
 export function normalizeOpenApiServerUrl(serverUrl: string = DEFAULT_OPEN_API_SERVER_URL): string {
   return `${normalizeTokenServerUrl(serverUrl)}open-api/`;
+}
+
+type ProjectListResponse = ProjectInfo[] | {
+  data?: ProjectInfo[];
+  list?: ProjectInfo[];
+  records?: ProjectInfo[];
+  rows?: ProjectInfo[];
+};
+
+function normalizeProjectList(value: ProjectListResponse | null | undefined): ProjectInfo[] {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  return value.records ?? value.list ?? value.rows ?? value.data ?? [];
 }
 
 export abstract class KbApiClient {
@@ -118,6 +132,22 @@ export abstract class KbApiClient {
 
   // ==================== 核心 API ====================
 
+  /** 获取当前登录用户可见的知识库空间 */
+  async findAllProjects(params: {
+    nameKey?: string;
+    bizCode?: string;
+    appCode?: string;
+  } = {}): Promise<ApiResult<ProjectInfo[]>> {
+    const result = await this.request<ProjectListResponse>('GET', API_PATHS.findAllProjects, {
+      nameKey: '',
+      bizCode: 'ordinary',
+      appCode: 'kz_doc',
+      ...params,
+    });
+    if (!result.ok) return result;
+    return { ok: true, value: normalizeProjectList(result.value) };
+  }
+
   /** 获取个人知识库空间 ID */
   async getPersonalProjectId(): Promise<ApiResult<string>> {
     const r = await this.request<string>('GET', API_PATHS.getPersonalProjectId);
@@ -137,12 +167,10 @@ export abstract class KbApiClient {
     return this.request<FileListItem[]>('GET', API_PATHS.getChildFiles, params);
   }
 
-  /** 获取文件下载凭据（用于获取原始文件内容） */
-  async getDownloadInfo(fileId: string, forceDownload = true): Promise<ApiResult<DownloadInfoVO>> {
-    return this.request<DownloadInfoVO>('GET', API_PATHS.getDownloadInfo, {
-      fileId,
-      forceDownload,
-    });
+  /** 获取文件下载/预览地址 */
+  async getDownloadInfo(fileId: string, forceDownload = false): Promise<ApiResult<DownloadInfoVO>> {
+    const params: Record<string, unknown> = { fileId, forceDownload };
+    return this.request<DownloadInfoVO>('GET', API_PATHS.getDownloadInfo, params);
   }
 
   /** 读取文件全文（AI 提取通道，适合文本文件） */

@@ -17,6 +17,7 @@ The knowledge-base browser still needs the same high-level API methods (`getChil
 Keep one UI-facing `KbApiClient` contract and split concrete clients by authentication mode.
 
 - `TokenApiClient` is the default after login.
+- When a saved auth session has an `xgToken`, client initialization must prefer `TokenApiClient` even if older local config still says `open-api`.
 - `TokenApiClient` sends the session token in the `access-token` header.
 - `TokenApiClient` uses the service root URL; if a saved URL ends in `/open-api/`, it normalizes that suffix away.
 - `OpenApiClient` remains as an explicit compatibility mode and sends `appKey`.

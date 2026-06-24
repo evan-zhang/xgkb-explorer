@@ -39,7 +39,7 @@ modules:
     invariants:
       - never commit real AppKeys
       - migrations must preserve existing localStorage users
-      - SpaceEntry uses directoryId; empty directoryId means personal root
+      - SpaceEntry uses directoryId; empty directoryId means current user's visible projects
     verify:
       - npm run build
       - switch AppKey and confirm projectId reloads
@@ -61,7 +61,7 @@ modules:
       - README/index preview lookup
     invariants:
       - projectId is tied to current client
-      - empty directoryId means personal root
+      - empty directoryId loads visible projects through findAllProjects
       - non-empty directoryId loads via getChildFiles(directoryId)
     verify:
       - npm run build
@@ -77,8 +77,9 @@ modules:
       - src/components/ContextMenu.tsx
   - name: preview
     path: docs/modules/preview.md
-    root: src/components
+    root: src
     related_files:
+      - src/lib/preview.ts
       - src/components/FilePreview.tsx
       - src/components/FileViewerModal.tsx
   - name: deployment

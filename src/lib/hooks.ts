@@ -5,7 +5,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { OpenApiClient, TokenApiClient } from './api';
 import type { KbApiClient } from './api';
-import type { FileListItem } from '../lib/types';
+import type { FileListItem, ProjectInfo } from '../lib/types';
 import { getConfig, saveConfig } from './config';
 
 // ==================== API Client Hook ====================
@@ -53,11 +53,11 @@ export function useApiClient() {
 
   const loadSavedClient = useCallback((accessToken?: string) => {
     const config = getConfig();
-    if (config.apiMode === 'open-api' && config.appKey) {
-      return initOpenApiClient(config.appKey, config.serverUrl, false);
-    }
     if (accessToken) {
       return initTokenClient(accessToken, config.serverUrl);
+    }
+    if (config.apiMode === 'open-api' && config.appKey) {
+      return initOpenApiClient(config.appKey, config.serverUrl, false);
     }
     return false;
   }, [initOpenApiClient, initTokenClient]);
@@ -199,16 +199,34 @@ export function useFileContent(client: KbApiClient | null) {
 
 // ==================== Projects Hub Hook ====================
 
+function getProjectEntryId(project: ProjectInfo): string | null {
+  const id = project.projectId ?? project.id ?? project.fileId;
+  return id === undefined || id === null ? null : String(id);
+}
+
+function getProjectEntryName(project: ProjectInfo, id: string): string {
+  return (project.name ?? project.projectName ?? project.title ?? String(id)).trim() || String(id);
+}
+
+function toProjectEntry(project: ProjectInfo): FileListItem | null {
+  const id = getProjectEntryId(project);
+  if (!id) return null;
+  return {
+    id,
+    name: getProjectEntryName(project, id),
+    type: 1,
+    entryKind: 'space',
+    createTime: project.createTime,
+    updateTime: project.updateTime,
+  };
+}
+
 /**
- * 加载配置目录下的一级子目录作为"项目列表"。
- * - directoryId 为空 → 展示个人空间根目录
- * - directoryId 非空 → 直接以目录 ID 加载子项
+ * 加载首页空间/项目列表。
+ * - directoryId 为空 → 调 findAllProjects 展示当前用户可见空间
+ * - directoryId 非空 → 直接以目录 ID 加载子文件夹
  */
-export function useProjectsHub(
-  client: KbApiClient | null,
-  personalProjectId: string | null,
-  directoryId: string,
-) {
+export function useProjectsHub(client: KbApiClient | null, directoryId: string) {
   const [projects, setProjects] = useState<FileListItem[]>([]);
   const [projectsDirFileId, setProjectsDirFileId] = useState<string | null>(null);
   const [directoryName, setDirectoryName] = useState<string | null>(null);
@@ -217,7 +235,6 @@ export function useProjectsHub(
 
   const load = useCallback(async () => {
     if (!client) return;
-    if (!directoryId && !personalProjectId) return;
 
     setIsLoading(true);
     setError(null);
@@ -227,11 +244,14 @@ export function useProjectsHub(
 
     try {
       if (!directoryId) {
-        const level1Result = await client.getLevel1Folders(personalProjectId!);
-        if (!level1Result.ok) { setError(level1Result.error); return; }
-        setProjectsDirFileId(personalProjectId);
-        setDirectoryName('个人书架');
-        setProjects(level1Result.value.filter((f) => f.type === 1));
+        const projectsResult = await client.findAllProjects({
+          nameKey: '',
+          bizCode: 'ordinary',
+          appCode: 'kz_doc',
+        });
+        if (!projectsResult.ok) { setError(projectsResult.error); return; }
+        setDirectoryName('全部空间');
+        setProjects(projectsResult.value.map(toProjectEntry).filter((item): item is FileListItem => item !== null));
         return;
       }
 
@@ -239,7 +259,7 @@ export function useProjectsHub(
       if (!childResult.ok) { setError(childResult.error); return; }
 
       setProjectsDirFileId(directoryId);
-      setProjects(childResult.value.filter((f) => f.type === 1));
+      setProjects(childResult.value.filter((f) => f.type === 1).map((f) => ({ ...f, entryKind: 'folder' })));
 
       const metaResult = await client.batchGetMeta([directoryId]);
       if (metaResult.ok) {
@@ -251,9 +271,29 @@ export function useProjectsHub(
     } finally {
       setIsLoading(false);
     }
-  }, [client, personalProjectId, directoryId]);
+  }, [client, directoryId]);
 
-  return { projects, projectsDirFileId, directoryName, isLoading, error, load };
+  const loadSpaceProjects = useCallback(async (projectId: string) => {
+    if (!client) return;
+
+    setIsLoading(true);
+    setError(null);
+    setProjects([]);
+    setProjectsDirFileId(projectId);
+    setDirectoryName(null);
+
+    try {
+      const result = await client.getLevel1Folders(projectId);
+      if (!result.ok) { setError(result.error); return; }
+      setProjects(result.value.filter((f) => f.type === 1).map((f) => ({ ...f, entryKind: 'folder' })));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [client]);
+
+  return { projects, projectsDirFileId, directoryName, isLoading, error, load, loadSpaceProjects };
 }
 
 /**
@@ -264,7 +304,11 @@ export function useReadmePreview(client: KbApiClient | null, projectFileId: stri
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (!client || !projectFileId) return;
+    if (!client || !projectFileId) {
+      setPreview(null);
+      setIsLoading(false);
+      return;
+    }
     let cancelled = false;
     setIsLoading(true);
     setPreview(null);

@@ -8,7 +8,7 @@ import { ConfigModal } from './components/ConfigModal';
 import { DingTalkLogin } from './components/DingTalkLogin';
 import { ProjectsHub } from './components/ProjectsHub';
 import { ProjectDetail } from './components/ProjectDetail';
-import { useApiClient, useProject, useProjectsHub } from './lib/hooks';
+import { useApiClient, useProjectsHub } from './lib/hooks';
 import { saveConfig, getConfig } from './lib/config';
 import {
   cleanDingTalkCallbackUrl,
@@ -24,6 +24,7 @@ import type { SpaceEntry } from './lib/config';
 import type { FileListItem } from './lib/types';
 
 type View = 'hub' | 'project';
+type HubMode = 'spaces' | 'directories' | 'projects';
 
 function App() {
   const {
@@ -34,15 +35,9 @@ function App() {
     initTokenClient,
     loadSavedClient,
   } = useApiClient();
-  const { projectId, isLoading: projectLoading, loadPersonalProjectId, setProjectId } = useProject(client);
   const [authSession, setAuthSession] = useState<AuthSession | null>(() => getAuthSession());
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
-
-  // 客户端切换（Token/AppKey/服务地址变更）时重置 projectId，避免用旧 projectId 查新会话的数据
-  useEffect(() => {
-    setProjectId(null);
-  }, [client, setProjectId]);
 
   // 空间列表 & 激活项
   const [spaces, setSpaces] = useState<SpaceEntry[]>(() => getConfig().spaces);
@@ -55,10 +50,19 @@ function App() {
     [spaces, activeSpaceId],
   );
 
-  const { projects, isLoading: hubLoading, error: hubError, directoryName, load: loadProjects } =
-    useProjectsHub(client, projectId, activeSpace?.directoryId ?? '');
+  const {
+    projects,
+    isLoading: hubLoading,
+    error: hubError,
+    directoryName,
+    load: loadProjects,
+    loadSpaceProjects,
+  } =
+    useProjectsHub(client, activeSpace?.directoryId ?? '');
 
   const [view, setView] = useState<View>('hub');
+  const [hubMode, setHubMode] = useState<HubMode>('spaces');
+  const [selectedSpace, setSelectedSpace] = useState<FileListItem | null>(null);
   const [selectedProject, setSelectedProject] = useState<FileListItem | null>(null);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
@@ -96,18 +100,15 @@ function App() {
     return () => { cancelled = true; };
   }, [loadSavedClient]);
 
-  // 客户端就绪后获取个人空间 ID（默认根目录时需要）
-  useEffect(() => {
-    if (client && !projectId && !activeSpace?.directoryId) loadPersonalProjectId();
-  }, [client, projectId, loadPersonalProjectId, activeSpace?.directoryId]);
-
-  // 条件满足时加载项目列表
+  // 客户端就绪后加载首页列表：默认展示当前登录用户可见空间，自定义目录展示其子项目。
   useEffect(() => {
     if (!client) return;
-    const needsPersonalId = !activeSpace?.directoryId;
-    if (needsPersonalId && !projectId) return;
+    setHubMode(activeSpace?.directoryId ? 'projects' : 'spaces');
+    setSelectedSpace(null);
+    setSelectedProject(null);
+    setView('hub');
     loadProjects();
-  }, [client, projectId, loadProjects, activeSpace?.directoryId]);
+  }, [client, loadProjects, activeSpace?.directoryId]);
 
   // 点击外部关闭空间切换下拉
   useEffect(() => {
@@ -138,6 +139,8 @@ function App() {
     saveConfig({ activeSpaceId: space.id });
     setShowSpaceSwitcher(false);
     setView('hub');
+    setHubMode(space.directoryId ? 'projects' : 'spaces');
+    setSelectedSpace(null);
     setSelectedProject(null);
   }, []);
 
@@ -158,6 +161,8 @@ function App() {
     setSpaces(newConfig.spaces);
     setActiveSpaceId(newConfig.activeSpaceId);
     setView('hub');
+    setHubMode(newConfig.spaces.find((space) => space.id === newConfig.activeSpaceId)?.directoryId ? 'projects' : 'spaces');
+    setSelectedSpace(null);
     setSelectedProject(null);
   }, [authSession?.xgToken, initOpenApiClient, initTokenClient]);
 
@@ -174,19 +179,82 @@ function App() {
   }, []);
 
   const handleSelectProject = useCallback((project: FileListItem) => {
+    if (project.entryKind === 'space') {
+      setSelectedSpace(project);
+      setHubMode('directories');
+      setSelectedProject(null);
+      loadSpaceProjects(String(project.id));
+      return;
+    }
     setSelectedProject(project);
     setView('project');
-  }, []);
+  }, [loadSpaceProjects]);
 
   const handleBack = useCallback(() => {
     setSelectedProject(null);
     setView('hub');
   }, []);
 
-  const isConnecting = clientLoading || projectLoading;
-  const activeSpaceName = activeSpace?.name || directoryName || activeSpace?.directoryId || '个人书架';
+  const handleBackToSpaces = useCallback(() => {
+    setSelectedSpace(null);
+    setSelectedProject(null);
+    setHubMode('spaces');
+    loadProjects();
+  }, [loadProjects]);
+
+  const handleReloadHub = useCallback(() => {
+    if (selectedSpace) {
+      loadSpaceProjects(String(selectedSpace.id));
+      return;
+    }
+    loadProjects();
+  }, [loadProjects, loadSpaceProjects, selectedSpace]);
+
+  const handleAddDirectoryToBookshelf = useCallback((directory: FileListItem) => {
+    const directoryId = String(directory.id);
+    const newEntry: SpaceEntry = {
+      id: `directory-${directoryId}`,
+      name: directory.name,
+      directoryId,
+    };
+    const nextSpaces = spaces.some((space) => space.directoryId === directoryId)
+      ? spaces.map((space) => space.directoryId === directoryId ? { ...space, name: space.name || directory.name } : space)
+      : [...spaces, newEntry];
+    const activeEntry = nextSpaces.find((space) => space.directoryId === directoryId) ?? newEntry;
+
+    setSpaces(nextSpaces);
+    setActiveSpaceId(activeEntry.id);
+    saveConfig({ spaces: nextSpaces, activeSpaceId: activeEntry.id });
+    setShowSpaceSwitcher(false);
+    setSelectedSpace(null);
+    setSelectedProject(null);
+    setHubMode('projects');
+    setView('hub');
+  }, [spaces]);
+
+  const isConnecting = clientLoading;
+  const activeSpaceName = !activeSpace?.directoryId
+    ? (directoryName || activeSpace?.name || '全部空间')
+    : (activeSpace?.name || directoryName || activeSpace.directoryId);
   const userName = authSession?.user.name?.trim() || '用户';
   const userAvatar = authSession?.user.avatar;
+  const selectedProjectId = selectedSpace
+    ? String(selectedSpace.id)
+    : selectedProject?.entryKind === 'project' || selectedProject?.entryKind === 'space'
+      ? String(selectedProject.id)
+      : undefined;
+  const isSpacesHub = !activeSpace?.directoryId && hubMode === 'spaces';
+  const isDirectoryPicker = !activeSpace?.directoryId && hubMode === 'directories';
+  const hubTitle = isSpacesHub
+    ? '我的空间'
+    : isDirectoryPicker
+      ? selectedSpace?.name || '选择目录'
+      : activeSpace?.directoryId ? '我的书架' : '空间项目';
+  const hubEmptyText = isSpacesHub
+    ? '暂无可见空间'
+    : isDirectoryPicker
+      ? '该空间下没有可加入书架的目录'
+      : '该目录下没有项目';
 
   if (isAuthLoading) {
     return (
@@ -264,11 +332,11 @@ function App() {
                       style={{ background: space.id === activeSpaceId ? '#F5F3EE' : undefined }}
                     >
                       <div style={{ fontSize: 13, fontWeight: space.id === activeSpaceId ? 600 : 400, color: '#1A1A1A' }}>
-                        {space.name || (space.id === activeSpaceId ? activeSpaceName : space.directoryId || '个人书架')}
+                        {space.name || (space.id === activeSpaceId ? activeSpaceName : space.directoryId || '全部空间')}
                         {space.id === activeSpaceId && <span style={{ fontSize: 11, color: '#2563EB', marginLeft: 6 }}>●</span>}
                       </div>
                       <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 1 }}>
-                        {space.directoryId ? `目录 ID: ${space.directoryId}` : '个人空间根目录'}
+                        {space.directoryId ? `目录 ID: ${space.directoryId}` : '当前可见空间'}
                       </div>
                     </button>
                   ))}
@@ -337,7 +405,7 @@ function App() {
               <p className="text-sm">连接知识库...</p>
             </div>
           </div>
-        ) : !client || (!projectId && !activeSpace?.directoryId) ? (
+        ) : !client ? (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center px-8" style={{ color: '#6B7280' }}>
               <p className="text-sm mb-2" style={{ color: '#4B5563' }}>无法连接到知识库</p>
@@ -354,7 +422,7 @@ function App() {
         ) : view === 'project' && selectedProject ? (
           <ProjectDetail
             client={client}
-            projectId={projectId ?? undefined}
+            projectId={selectedProjectId}
             project={selectedProject}
             onBack={handleBack}
           />
@@ -364,8 +432,15 @@ function App() {
             projects={projects}
             isLoading={hubLoading}
             error={hubError}
+            title={hubTitle}
+            itemLabel={isSpacesHub ? '空间' : isDirectoryPicker ? '目录' : '项目'}
+            emptyText={hubEmptyText}
+            preserveOrder={isSpacesHub || isDirectoryPicker}
+            mode={isSpacesHub ? 'spaces' : isDirectoryPicker ? 'directories' : 'projects'}
+            onBack={selectedSpace ? handleBackToSpaces : undefined}
+            onAddDirectory={handleAddDirectoryToBookshelf}
             onSelectProject={handleSelectProject}
-            onReload={loadProjects}
+            onReload={handleReloadHub}
           />
         )}
       </main>

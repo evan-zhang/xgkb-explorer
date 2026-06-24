@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect, useRef } from 'react';
-import { RefreshCw, AlertCircle, Clock, ChevronLeft, ChevronRight, Star, Share2, MoreHorizontal } from 'lucide-react';
+import { ArrowLeft, BookMarked, Boxes, FolderPlus, RefreshCw, AlertCircle, Clock, ChevronLeft, ChevronRight, Star, Share2, MoreHorizontal } from 'lucide-react';
 import type { KbApiClient } from '../lib/api';
 import type { FileListItem } from '../lib/types';
 import { useReadmePreview } from '../lib/hooks';
@@ -46,7 +46,8 @@ interface ProjectCardProps {
 }
 
 function ProjectCard({ project, client, isStarred, onClick, onToggleStar, onContextMenu }: ProjectCardProps) {
-  const { preview, isLoading: previewLoading } = useReadmePreview(client, String(project.id));
+  const previewFileId = project.entryKind === 'project' ? '' : String(project.id);
+  const { preview, isLoading: previewLoading } = useReadmePreview(client, previewFileId);
   const [c1, c2] = nameToGradient(project.name);
   const initial = project.name.charAt(0);
 
@@ -140,16 +141,196 @@ function ProjectCard({ project, client, isStarred, onClick, onToggleStar, onCont
   );
 }
 
+interface SpaceCardProps {
+  space: FileListItem;
+  onClick: () => void;
+}
+
+function SpaceCard({ space, onClick }: SpaceCardProps) {
+  const [c1, c2] = nameToGradient(space.name);
+  const initial = space.name.charAt(0);
+  const updateDate = space.updateTime
+    ? new Date(space.updateTime).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
+    : null;
+
+  return (
+    <button
+      onClick={onClick}
+      className="group text-left transition-all duration-200 hover:-translate-y-1"
+      style={{
+        minHeight: 176,
+        borderRadius: 10,
+        overflow: 'hidden',
+        background: '#FFFFFF',
+        border: '1px solid #E8E8E5',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+      }}
+      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 8px 24px rgba(0,0,0,0.10)'; }}
+      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)'; }}
+    >
+      <div style={{ height: 8, background: `linear-gradient(90deg, ${c1} 0%, ${c2} 100%)` }} />
+      <div style={{ padding: '18px 18px 16px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <div className="flex items-start justify-between gap-3">
+          <div
+            className="flex items-center justify-center flex-shrink-0"
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 10,
+              background: `linear-gradient(135deg, ${c1} 0%, ${c2} 100%)`,
+              color: '#FFFFFF',
+              fontFamily: 'Georgia, serif',
+              fontSize: 20,
+              fontWeight: 700,
+            }}
+          >
+            {initial}
+          </div>
+          <span
+            className="inline-flex items-center gap-1.5"
+            style={{
+              padding: '4px 8px',
+              borderRadius: 999,
+              background: '#F5F3EE',
+              color: '#6B7280',
+              fontSize: 11,
+              fontWeight: 500,
+            }}
+          >
+            <Boxes className="w-3 h-3" />
+            空间
+          </span>
+        </div>
+
+        <div>
+          <h3
+            style={{
+              color: '#1A1A1A',
+              fontSize: 17,
+              fontWeight: 650,
+              lineHeight: 1.35,
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+            } as React.CSSProperties}
+          >
+            {space.name}
+          </h3>
+          <p style={{ color: '#9CA3AF', fontSize: 12, marginTop: 8 }}>
+            {updateDate ? `更新于 ${updateDate}` : `ID: ${space.id}`}
+          </p>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+interface DirectoryCardProps {
+  directory: FileListItem;
+  onClick: () => void;
+}
+
+function DirectoryCard({ directory, onClick }: DirectoryCardProps) {
+  const updateDate = directory.updateTime
+    ? new Date(directory.updateTime).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
+    : null;
+
+  return (
+    <button
+      onClick={onClick}
+      className="group text-left transition-all duration-150"
+      style={{
+        minHeight: 132,
+        borderRadius: 10,
+        background: '#FFFFFF',
+        border: '1px solid #E8E8E5',
+        padding: 16,
+        boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+      }}
+      onMouseEnter={e => {
+        (e.currentTarget as HTMLButtonElement).style.borderColor = '#B8C7E6';
+        (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 8px 20px rgba(37,99,235,0.10)';
+      }}
+      onMouseLeave={e => {
+        (e.currentTarget as HTMLButtonElement).style.borderColor = '#E8E8E5';
+        (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 1px 2px rgba(0,0,0,0.04)';
+      }}
+    >
+      <div className="flex items-start gap-3">
+        <span
+          className="flex items-center justify-center flex-shrink-0"
+          style={{ width: 42, height: 42, borderRadius: 10, background: '#FBF7EE', color: '#B45309' }}
+        >
+          <BookMarked className="w-5 h-5" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span
+            style={{
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              color: '#1A1A1A',
+              fontSize: 15,
+              fontWeight: 650,
+              lineHeight: 1.35,
+            } as React.CSSProperties}
+          >
+            {directory.name}
+          </span>
+          <span style={{ display: 'block', color: '#9CA3AF', fontSize: 12, marginTop: 6 }}>
+            {updateDate ? `更新于 ${updateDate}` : `目录 ID: ${directory.id}`}
+          </span>
+        </span>
+      </div>
+      <span
+        className="inline-flex items-center gap-1.5"
+        style={{
+          marginTop: 18,
+          color: '#2563EB',
+          fontSize: 13,
+          fontWeight: 600,
+        }}
+      >
+        <FolderPlus className="w-4 h-4" />
+        放入书架
+      </span>
+    </button>
+  );
+}
+
 interface ProjectsHubProps {
   client: KbApiClient;
   projects: FileListItem[];
   isLoading: boolean;
   error: string | null;
+  title?: string;
+  itemLabel?: string;
+  emptyText?: string;
+  preserveOrder?: boolean;
+  mode?: 'spaces' | 'directories' | 'projects';
+  onBack?: () => void;
+  onAddDirectory?: (directory: FileListItem) => void;
   onSelectProject: (project: FileListItem) => void;
   onReload: () => void;
 }
 
-export function ProjectsHub({ client, projects, isLoading, error, onSelectProject, onReload }: ProjectsHubProps) {
+export function ProjectsHub({
+  client,
+  projects,
+  isLoading,
+  error,
+  title = '我的书架',
+  itemLabel = '项目',
+  emptyText = '该目录下没有项目',
+  preserveOrder = false,
+  mode = 'projects',
+  onBack,
+  onAddDirectory,
+  onSelectProject,
+  onReload,
+}: ProjectsHubProps) {
   const handleReload = useCallback(() => onReload(), [onReload]);
   const [page, setPage] = useState(1);
   const [starred, setStarred] = useState<Set<string>>(loadStarred);
@@ -188,12 +369,14 @@ export function ProjectsHub({ client, projects, isLoading, error, onSelectProjec
     return b.updateTime - a.updateTime;
   };
 
-  const sortedAll = [...projects].sort(byUpdateTime);
-  const starredProjects = sortedAll.filter(p => starred.has(String(p.id)));
-  const unstarredProjects = sortedAll.filter(p => !starred.has(String(p.id)));
+  const sortedAll = preserveOrder ? projects : [...projects].sort(byUpdateTime);
+  const starredProjects = preserveOrder ? [] : sortedAll.filter(p => starred.has(String(p.id)));
+  const unstarredProjects = preserveOrder ? sortedAll : sortedAll.filter(p => !starred.has(String(p.id)));
 
   const totalPages = Math.max(1, Math.ceil(unstarredProjects.length / PAGE_SIZE));
   const paged = unstarredProjects.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const isSpacesMode = mode === 'spaces';
+  const isDirectoriesMode = mode === 'directories';
 
   if (isLoading) {
     return (
@@ -216,7 +399,7 @@ export function ProjectsHub({ client, projects, isLoading, error, onSelectProjec
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center px-8 max-w-md">
           <AlertCircle style={{ width: 48, height: 48, color: '#DC2626', margin: '0 auto 16px', opacity: 0.7 }} />
-          <p style={{ color: '#DC2626', fontWeight: 500, marginBottom: 8 }}>无法加载项目列表</p>
+          <p style={{ color: '#DC2626', fontWeight: 500, marginBottom: 8 }}>无法加载{itemLabel}列表</p>
           <p style={{ fontSize: 13, color: '#9CA3AF', marginBottom: 16 }}>{error}</p>
           <button
             onClick={handleReload}
@@ -250,10 +433,20 @@ export function ProjectsHub({ client, projects, isLoading, error, onSelectProjec
       {/* 顶部大标题 + 刷新 */}
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 32 }}>
         <div>
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="flex items-center gap-1.5 hover:text-[#2563EB] transition-colors"
+              style={{ color: '#6B7280', fontSize: 13, marginBottom: 10 }}
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              返回空间
+            </button>
+          )}
           <h1 style={{ fontFamily: 'Georgia, "Noto Serif SC", serif', fontSize: 28, fontWeight: 600, color: '#1A1A1A', letterSpacing: '0.3px' }}>
-            我的书架
+            {title}
           </h1>
-          <p style={{ color: '#6B7280', fontSize: 14, marginTop: 4 }}>共 {projects.length} 个项目</p>
+          <p style={{ color: '#6B7280', fontSize: 14, marginTop: 4 }}>共 {projects.length} 个{itemLabel}</p>
         </div>
         <button
           onClick={handleReload}
@@ -267,12 +460,48 @@ export function ProjectsHub({ client, projects, isLoading, error, onSelectProjec
 
       {projects.length === 0 ? (
         <div className="text-center py-16" style={{ color: '#9CA3AF' }}>
-          <p>该目录下没有项目</p>
+          <p>{emptyText}</p>
         </div>
       ) : (
         <>
+          {isSpacesMode && (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 18 }}>
+                {paged.map((space) => (
+                  <SpaceCard
+                    key={String(space.id)}
+                    space={space}
+                    onClick={() => onSelectProject(space)}
+                  />
+                ))}
+              </div>
+
+              {totalPages > 1 && (
+                <Pagination page={page} totalPages={totalPages} setPage={setPage} />
+              )}
+            </>
+          )}
+
+          {isDirectoriesMode && (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
+                {paged.map((directory) => (
+                  <DirectoryCard
+                    key={String(directory.id)}
+                    directory={directory}
+                    onClick={() => onAddDirectory?.(directory)}
+                  />
+                ))}
+              </div>
+
+              {totalPages > 1 && (
+                <Pagination page={page} totalPages={totalPages} setPage={setPage} />
+              )}
+            </>
+          )}
+
           {/* 收藏分区 */}
-          {starredProjects.length > 0 && (
+          {!isSpacesMode && !isDirectoriesMode && starredProjects.length > 0 && (
             <div style={{ marginBottom: 48 }}>
               <SectionHead
                 title="收藏"
@@ -295,10 +524,10 @@ export function ProjectsHub({ client, projects, isLoading, error, onSelectProjec
           )}
 
           {/* 其他项目分区 */}
-          {unstarredProjects.length > 0 && (
+          {!isSpacesMode && !isDirectoriesMode && unstarredProjects.length > 0 && (
             <div>
               <SectionHead
-                title={starredProjects.length > 0 ? '其他项目' : '所有项目'}
+                title={starredProjects.length > 0 ? `其他${itemLabel}` : `所有${itemLabel}`}
                 count={unstarredProjects.length}
               />
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(196px, 1fr))', gap: 20 }}>
@@ -315,41 +544,7 @@ export function ProjectsHub({ client, projects, isLoading, error, onSelectProjec
                 ))}
               </div>
 
-              {totalPages > 1 && (
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, paddingTop: 32, paddingBottom: 8 }}>
-                  <button
-                    onClick={() => setPage((p) => p - 1)}
-                    disabled={page === 1}
-                    className="hover:border-[#2563EB] hover:text-[#2563EB] disabled:opacity-30 disabled:pointer-events-none transition-colors flex items-center gap-1"
-                    style={{ padding: '8px 14px', border: '1px solid #E8E8E5', background: '#FFFFFF', borderRadius: 8, fontSize: 14, cursor: 'pointer', color: '#4B5563' }}
-                  >
-                    <ChevronLeft className="w-3.5 h-3.5" />
-                    上一页
-                  </button>
-
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                    <button
-                      key={p}
-                      onClick={() => setPage(p)}
-                      className={p !== page ? 'hover:border-[#2563EB] hover:text-[#2563EB] transition-colors' : ''}
-                      style={p === page
-                        ? { padding: '8px 14px', background: '#1A1A1A', color: '#FFFFFF', borderRadius: 8, fontSize: 14 }
-                        : { padding: '8px 14px', border: '1px solid #E8E8E5', background: '#FFFFFF', color: '#4B5563', borderRadius: 8, fontSize: 14, cursor: 'pointer' }
-                      }
-                    >{p}</button>
-                  ))}
-
-                  <button
-                    onClick={() => setPage((p) => p + 1)}
-                    disabled={page === totalPages}
-                    className="hover:border-[#2563EB] hover:text-[#2563EB] disabled:opacity-30 disabled:pointer-events-none transition-colors flex items-center gap-1"
-                    style={{ padding: '8px 14px', border: '1px solid #E8E8E5', background: '#FFFFFF', borderRadius: 8, fontSize: 14, cursor: 'pointer', color: '#4B5563' }}
-                  >
-                    下一页
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              )}
+              {totalPages > 1 && <Pagination page={page} totalPages={totalPages} setPage={setPage} />}
             </div>
           )}
         </>
@@ -389,6 +584,52 @@ export function ProjectsHub({ client, projects, isLoading, error, onSelectProjec
           {toast}
         </div>
       )}
+    </div>
+  );
+}
+
+function Pagination({
+  page,
+  totalPages,
+  setPage,
+}: {
+  page: number;
+  totalPages: number;
+  setPage: React.Dispatch<React.SetStateAction<number>>;
+}) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, paddingTop: 32, paddingBottom: 8 }}>
+      <button
+        onClick={() => setPage((p) => p - 1)}
+        disabled={page === 1}
+        className="hover:border-[#2563EB] hover:text-[#2563EB] disabled:opacity-30 disabled:pointer-events-none transition-colors flex items-center gap-1"
+        style={{ padding: '8px 14px', border: '1px solid #E8E8E5', background: '#FFFFFF', borderRadius: 8, fontSize: 14, cursor: 'pointer', color: '#4B5563' }}
+      >
+        <ChevronLeft className="w-3.5 h-3.5" />
+        上一页
+      </button>
+
+      {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+        <button
+          key={p}
+          onClick={() => setPage(p)}
+          className={p !== page ? 'hover:border-[#2563EB] hover:text-[#2563EB] transition-colors' : ''}
+          style={p === page
+            ? { padding: '8px 14px', background: '#1A1A1A', color: '#FFFFFF', borderRadius: 8, fontSize: 14 }
+            : { padding: '8px 14px', border: '1px solid #E8E8E5', background: '#FFFFFF', color: '#4B5563', borderRadius: 8, fontSize: 14, cursor: 'pointer' }
+          }
+        >{p}</button>
+      ))}
+
+      <button
+        onClick={() => setPage((p) => p + 1)}
+        disabled={page === totalPages}
+        className="hover:border-[#2563EB] hover:text-[#2563EB] disabled:opacity-30 disabled:pointer-events-none transition-colors flex items-center gap-1"
+        style={{ padding: '8px 14px', border: '1px solid #E8E8E5', background: '#FFFFFF', borderRadius: 8, fontSize: 14, cursor: 'pointer', color: '#4B5563' }}
+      >
+        下一页
+        <ChevronRight className="w-3.5 h-3.5" />
+      </button>
     </div>
   );
 }

@@ -4,7 +4,7 @@ Date: 2026-06-23
 
 ## Status
 
-Accepted
+Accepted, amended by 0006-default-visible-projects
 
 ## Context
 
@@ -23,7 +23,7 @@ The settings UI stores only:
 
 When `directoryId` is present, the hub loads child folders directly with `getChildFiles(directoryId)`. If `name` is empty, the app resolves a display name from `batchGetMeta(directoryId)` when possible.
 
-An empty `directoryId` remains a personal-root fallback and loads through `getPersonalProjectId` plus `getLevel1Folders`.
+The original fallback for an empty `directoryId` was the personal root. This was changed by `0006-default-visible-projects`: an empty `directoryId` now means the current user's visible project list from `findAllProjects`.
 
 ## Consequences
 

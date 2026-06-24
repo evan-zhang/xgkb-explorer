@@ -53,7 +53,7 @@ export function ConfigModal({ isOpen, onClose, onSave }: ConfigModalProps) {
       setAppKey(config.appKey || '');
       setServerUrl(config.serverUrl || '');
       setPreviewMode(config.previewMode || 'self');
-      setSpaces(config.spaces?.length ? config.spaces : [{ id: 'personal', name: '个人书架', directoryId: '' }]);
+      setSpaces(config.spaces?.length ? config.spaces : [{ id: 'personal', name: '全部空间', directoryId: '' }]);
       setError(null);
       setSuccess(false);
       setEntryForm(null);
@@ -246,10 +246,10 @@ export function ConfigModal({ isOpen, onClose, onSave }: ConfigModalProps) {
                     <div className="flex items-center gap-3">
                       <div className="flex-1 min-w-0">
                         <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1A1A' }}>
-                          {entry.name || entry.directoryId || '个人书架'}
+                          {entry.name || entry.directoryId || '全部空间'}
                         </div>
                         <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>
-                          {entry.directoryId ? `目录 ID: ${entry.directoryId}` : '个人空间根目录'}
+                          {entry.directoryId ? `目录 ID: ${entry.directoryId}` : '当前可见空间'}
                         </div>
                       </div>
                       <div className="flex items-center gap-0.5 flex-shrink-0">
@@ -348,7 +348,7 @@ function EntryFormFields({
   return (
     <div className="space-y-2.5">
       <div>
-        <label className="block text-xs text-[#6B7280] mb-1">目录 ID <span style={{ color: '#9CA3AF' }}>（留空 = 个人空间根目录）</span></label>
+        <label className="block text-xs text-[#6B7280] mb-1">目录 ID <span style={{ color: '#9CA3AF' }}>（留空 = 当前可见空间）</span></label>
         <input
           type="text"
           value={form.directoryId}
@@ -364,7 +364,7 @@ function EntryFormFields({
           type="text"
           value={form.name}
           onChange={(e) => onChange({ ...form, name: e.target.value })}
-          placeholder="如：个人书架、医疗知识库"
+          placeholder="如：全部空间、医疗知识库"
           className={inputCls}
         />
       </div>
