@@ -447,6 +447,7 @@ function App() {
 
       <ConfigModal
         isOpen={isConfigModalOpen}
+        client={client}
         onClose={() => setIsConfigModalOpen(false)}
         onSave={handleConfigSave}
       />

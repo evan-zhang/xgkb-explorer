@@ -4,12 +4,15 @@
  */
 
 import { useState, useEffect } from 'react';
-import { X, Key, Globe, Check, AlertCircle, Plus, Pencil, Trash2, ChevronDown, ChevronUp, ShieldCheck } from 'lucide-react';
+import { X, Key, Globe, Check, AlertCircle, Plus, Pencil, Trash2, ChevronDown, ChevronUp, ShieldCheck, FolderPlus } from 'lucide-react';
+import { DirectoryPickerModal, type DirectorySelection } from './DirectoryPickerModal';
 import { getConfig, saveConfig } from '../lib/config';
+import type { KbApiClient } from '../lib/api';
 import type { ApiMode, SpaceEntry } from '../lib/config';
 
 interface ConfigModalProps {
   isOpen: boolean;
+  client: KbApiClient | null;
   onClose: () => void;
   onSave: (options: { apiMode: ApiMode; appKey: string; serverUrl: string }) => void | Promise<void>;
 }
@@ -35,7 +38,7 @@ interface EntryFormState {
   directoryId: string;
 }
 
-export function ConfigModal({ isOpen, onClose, onSave }: ConfigModalProps) {
+export function ConfigModal({ isOpen, client, onClose, onSave }: ConfigModalProps) {
   const [apiMode, setApiMode] = useState<ApiMode>('token');
   const [appKey, setAppKey] = useState('');
   const [serverUrl, setServerUrl] = useState('');
@@ -45,6 +48,7 @@ export function ConfigModal({ isOpen, onClose, onSave }: ConfigModalProps) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [entryForm, setEntryForm] = useState<EntryFormState | null>(null);
+  const [isDirectoryPickerOpen, setIsDirectoryPickerOpen] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -57,6 +61,7 @@ export function ConfigModal({ isOpen, onClose, onSave }: ConfigModalProps) {
       setError(null);
       setSuccess(false);
       setEntryForm(null);
+      setIsDirectoryPickerOpen(false);
     }
   }, [isOpen]);
 
@@ -69,6 +74,19 @@ export function ConfigModal({ isOpen, onClose, onSave }: ConfigModalProps) {
   };
 
   const cancelEntryForm = () => setEntryForm(null);
+
+  const addDirectorySelection = (selection: DirectorySelection) => {
+    const entry: SpaceEntry = {
+      id: `directory-${selection.directoryId}`,
+      name: selection.name,
+      directoryId: selection.directoryId,
+    };
+    setSpaces((prev) => prev.some((space) => space.directoryId === entry.directoryId)
+      ? prev
+      : [...prev, entry]);
+    setEntryForm(null);
+    setIsDirectoryPickerOpen(false);
+  };
 
   const saveEntry = () => {
     if (!entryForm) return;
@@ -113,6 +131,11 @@ export function ConfigModal({ isOpen, onClose, onSave }: ConfigModalProps) {
 
     setIsValidating(true);
     try {
+      const currentConfig = getConfig();
+      const nextActiveSpaceId = spaces.some((space) => space.id === currentConfig.activeSpaceId)
+        ? currentConfig.activeSpaceId
+        : spaces[0]?.id ?? 'personal';
+
       // 保存空间和预览模式到 localStorage
       saveConfig({
         apiMode,
@@ -120,6 +143,7 @@ export function ConfigModal({ isOpen, onClose, onSave }: ConfigModalProps) {
         serverUrl: serverUrl.trim(),
         previewMode,
         spaces,
+        activeSpaceId: nextActiveSpaceId,
       });
       await onSave({ apiMode, appKey: appKey.trim(), serverUrl: serverUrl.trim() });
       setSuccess(true);
@@ -137,6 +161,7 @@ export function ConfigModal({ isOpen, onClose, onSave }: ConfigModalProps) {
   const labelCls = 'block text-xs font-medium text-[#4B5563] mb-1.5 uppercase tracking-wide';
 
   return (
+    <>
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(2px)' }}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 flex flex-col" style={{ maxHeight: '90vh' }}>
 
@@ -280,14 +305,24 @@ export function ConfigModal({ isOpen, onClose, onSave }: ConfigModalProps) {
 
               {/* 添加按钮 */}
               {!entryForm && (
-                <button
-                  onClick={openAddForm}
-                  className="w-full py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 transition-colors hover:bg-[#F0EFEA]"
-                  style={{ border: '1.5px dashed #D0D0CA', color: '#6B7280' }}
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  添加目录
-                </button>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setIsDirectoryPickerOpen(true)}
+                    className="py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 transition-colors hover:bg-[#F0EFEA]"
+                    style={{ border: '1.5px dashed #D0D0CA', color: '#2563EB' }}
+                  >
+                    <FolderPlus className="w-3.5 h-3.5" />
+                    选择目录
+                  </button>
+                  <button
+                    onClick={openAddForm}
+                    className="py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 transition-colors hover:bg-[#F0EFEA]"
+                    style={{ border: '1.5px dashed #D0D0CA', color: '#6B7280' }}
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    手动输入 ID
+                  </button>
+                </div>
               )}
             </div>
           </section>
@@ -327,6 +362,14 @@ export function ConfigModal({ isOpen, onClose, onSave }: ConfigModalProps) {
         </div>
       </div>
     </div>
+    <DirectoryPickerModal
+      isOpen={isDirectoryPickerOpen}
+      client={client}
+      existingSpaces={spaces}
+      onClose={() => setIsDirectoryPickerOpen(false)}
+      onSelect={addDirectorySelection}
+    />
+    </>
   );
 }
 
