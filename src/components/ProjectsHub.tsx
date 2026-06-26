@@ -46,8 +46,7 @@ interface ProjectCardProps {
 }
 
 function ProjectCard({ project, client, isStarred, onClick, onToggleStar, onContextMenu }: ProjectCardProps) {
-  const previewFileId = project.entryKind === 'project' ? '' : String(project.id);
-  const { preview, isLoading: previewLoading } = useReadmePreview(client, previewFileId);
+  const { preview, isLoading: previewLoading } = useReadmePreview(client, String(project.id));
   const [c1, c2] = nameToGradient(project.name);
   const initial = project.name.charAt(0);
 

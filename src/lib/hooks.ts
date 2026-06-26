@@ -296,42 +296,65 @@ export function useProjectsHub(client: KbApiClient | null, directoryId: string) 
   return { projects, projectsDirFileId, directoryName, isLoading, error, load, loadSpaceProjects };
 }
 
+function summarizeReadme(content: string): string | null {
+  const lines = content
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line && !/^#{1,6}\s+/.test(line));
+  return lines.join(' ').slice(0, 200) || null;
+}
+
 /**
- * 懒加载指定项目目录下的 README.md 或 index.md 内容摘要（前 200 字符）。
+ * 懒加载指定目录下的 README.md 内容摘要（前 200 字符）。
  */
-export function useReadmePreview(client: KbApiClient | null, projectFileId: string) {
+export function useReadmePreview(client: KbApiClient | null, directoryId: string) {
   const [preview, setPreview] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (!client || !projectFileId) {
+    if (!client || !directoryId) {
       setPreview(null);
       setIsLoading(false);
       return;
     }
+    const activeClient = client;
     let cancelled = false;
     setIsLoading(true);
     setPreview(null);
 
-    client.getChildFiles(projectFileId).then(async (result) => {
-      if (cancelled || !result.ok) return;
-      const readme = result.value.find(
-        (f) => f.type !== 1 && /^(readme|index)\.(md|markdown)$/i.test(f.name),
-      );
-      if (!readme) { setIsLoading(false); return; }
+    async function loadReadmePreview() {
+      try {
+        const files = await activeClient.getChildFiles(directoryId);
+        if (cancelled || !files.ok) return;
 
-      const content = await client.getFullFileContent(String(readme.id));
-      if (cancelled) return;
-      if (content.ok && content.value) {
-        // 去掉标题行和空行，取有效内容
-        const lines = content.value.split('\n').filter((l) => l.trim() && !l.startsWith('#'));
-        setPreview(lines.join(' ').slice(0, 200) || null);
+        const readme = files.value.find(
+          (f) => f.type !== 1 && /^readme\.md$/i.test(f.name),
+        );
+        if (!readme) return;
+
+        const downloadInfo = await activeClient.getDownloadInfo(String(readme.id));
+        if (cancelled || !downloadInfo.ok) return;
+
+        const downloadUrl = downloadInfo.value.downloadUrl || downloadInfo.value.previewUrl;
+        if (!downloadUrl) return;
+
+        const response = await fetch(downloadUrl);
+        if (cancelled || !response.ok) return;
+
+        const content = await response.text();
+        if (!cancelled) setPreview(summarizeReadme(content));
+      } catch {
+        // Keep the card fallback when README lookup or download fails.
+      } finally {
+        if (!cancelled) setIsLoading(false);
       }
-      setIsLoading(false);
-    }).catch(() => { if (!cancelled) setIsLoading(false); });
+    }
+
+    void loadReadmePreview();
 
     return () => { cancelled = true; };
-  }, [client, projectFileId]);
+  }, [client, directoryId]);
 
   return { preview, isLoading };
 }
