@@ -349,7 +349,7 @@ function App() {
         <div className="relative flex-shrink-0" ref={accountMenuRef}>
           <button
             onClick={() => setShowAccountMenu((v) => !v)}
-            className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[#F0EFEA] transition-colors"
+            className="flex min-w-28 items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[#F0EFEA] transition-colors"
             style={{ color: '#4B5563', border: '1px solid #E8E8E5', background: '#FFFFFF' }}
             title={userName}
           >
@@ -369,7 +369,7 @@ function App() {
 
           {showAccountMenu && (
             <div
-              className="absolute top-full right-0 mt-1.5 bg-white rounded-xl shadow-lg border border-[#ECECE6] min-w-40 z-50 py-1 overflow-hidden"
+              className="absolute top-full right-0 mt-1.5 w-full bg-white rounded-xl shadow-lg border border-[#ECECE6] z-50 py-1 overflow-hidden"
               style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.12)' }}
             >
               <button
@@ -377,7 +377,7 @@ function App() {
                   setShowAccountMenu(false);
                   setIsConfigModalOpen(true);
                 }}
-                className="w-full flex items-center gap-2 px-4 py-2.5 text-left transition-colors hover:bg-[#F5F3EE]"
+                className="w-full flex items-center gap-2 px-2.5 py-2.5 text-left transition-colors hover:bg-[#F5F3EE]"
                 style={{ color: '#4B5563', fontSize: 13 }}
               >
                 <Settings className="w-4 h-4" />
@@ -385,7 +385,7 @@ function App() {
               </button>
               <button
                 onClick={handleLogout}
-                className="w-full flex items-center gap-2 px-4 py-2.5 text-left transition-colors hover:bg-[#F5F3EE]"
+                className="w-full flex items-center gap-2 px-2.5 py-2.5 text-left transition-colors hover:bg-[#F5F3EE]"
                 style={{ color: '#DC2626', fontSize: 13 }}
               >
                 <LogOut className="w-4 h-4" />
