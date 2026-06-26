@@ -57,7 +57,7 @@ export function ConfigModal({ isOpen, client, onClose, onSave }: ConfigModalProp
       setAppKey(config.appKey || '');
       setServerUrl(config.serverUrl || '');
       setPreviewMode(config.previewMode || 'self');
-      setSpaces(config.spaces?.length ? config.spaces : [{ id: 'personal', name: '全部空间', directoryId: '' }]);
+      setSpaces(config.spaces ?? []);
       setError(null);
       setSuccess(false);
       setEntryForm(null);
@@ -90,24 +90,27 @@ export function ConfigModal({ isOpen, client, onClose, onSave }: ConfigModalProp
 
   const saveEntry = () => {
     if (!entryForm) return;
+    const directoryId = entryForm.directoryId.trim();
+    if (!directoryId) {
+      setError('请选择目录或输入目录 ID');
+      return;
+    }
     const entry: SpaceEntry = {
       id: entryForm.id,
       name: entryForm.name.trim(),
-      directoryId: entryForm.directoryId.trim(),
+      directoryId,
     };
     if (entryForm.isNew) {
       setSpaces((prev) => [...prev, entry]);
     } else {
       setSpaces((prev) => prev.map((s) => s.id === entry.id ? entry : s));
     }
+    setError(null);
     setEntryForm(null);
   };
 
   const deleteEntry = (id: string) => {
-    setSpaces((prev) => {
-      const next = prev.filter((s) => s.id !== id);
-      return next.length ? next : prev; // 至少保留一条
-    });
+    setSpaces((prev) => prev.filter((s) => s.id !== id));
   };
 
   const moveEntry = (id: string, dir: -1 | 1) => {
@@ -134,7 +137,7 @@ export function ConfigModal({ isOpen, client, onClose, onSave }: ConfigModalProp
       const currentConfig = getConfig();
       const nextActiveSpaceId = spaces.some((space) => space.id === currentConfig.activeSpaceId)
         ? currentConfig.activeSpaceId
-        : spaces[0]?.id ?? 'personal';
+        : spaces[0]?.id ?? '';
 
       // 保存空间和预览模式到 localStorage
       saveConfig({
@@ -259,6 +262,17 @@ export function ConfigModal({ isOpen, client, onClose, onSave }: ConfigModalProp
             <p style={{ fontSize: 11, fontWeight: 600, color: '#9CA3AF', letterSpacing: '0.08em', marginBottom: 12, textTransform: 'uppercase' }}>空间目录</p>
 
             <div className="space-y-2">
+              {spaces.length === 0 && !entryForm && (
+                <div
+                  className="rounded-xl border border-dashed px-4 py-6 text-center"
+                  style={{ borderColor: '#D0D0CA', background: '#FAFAF7' }}
+                >
+                  <FolderPlus className="w-6 h-6 mx-auto mb-2" style={{ color: '#2563EB' }} />
+                  <p style={{ color: '#1A1A1A', fontSize: 13, fontWeight: 650 }}>还没有书架目录</p>
+                  <p style={{ color: '#9CA3AF', fontSize: 12, marginTop: 4 }}>选择一个目录后，系统会把它作为书架入口。</p>
+                </div>
+              )}
+
               {spaces.map((entry, idx) => (
                 <div
                   key={entry.id}
@@ -287,7 +301,7 @@ export function ConfigModal({ isOpen, client, onClose, onSave }: ConfigModalProp
                         <button onClick={() => openEditForm(entry)} title="编辑" className="p-1.5 rounded-md hover:bg-[#ECECE6] transition-colors">
                           <Pencil className="w-3.5 h-3.5" style={{ color: '#6B7280' }} />
                         </button>
-                        <button onClick={() => deleteEntry(entry.id)} title="删除" disabled={spaces.length <= 1} className="p-1.5 rounded-md hover:bg-red-50 transition-colors disabled:opacity-30">
+                        <button onClick={() => deleteEntry(entry.id)} title="删除" className="p-1.5 rounded-md hover:bg-red-50 transition-colors">
                           <Trash2 className="w-3.5 h-3.5 text-red-400" />
                         </button>
                       </div>
@@ -391,7 +405,7 @@ function EntryFormFields({
   return (
     <div className="space-y-2.5">
       <div>
-        <label className="block text-xs text-[#6B7280] mb-1">目录 ID <span style={{ color: '#9CA3AF' }}>（留空 = 当前可见空间）</span></label>
+        <label className="block text-xs text-[#6B7280] mb-1">目录 ID</label>
         <input
           type="text"
           value={form.directoryId}
@@ -402,12 +416,12 @@ function EntryFormFields({
         />
       </div>
       <div>
-        <label className="block text-xs text-[#6B7280] mb-1">名称 <span style={{ color: '#9CA3AF' }}>（可选，留空自动读取目录名称）</span></label>
+        <label className="block text-xs text-[#6B7280] mb-1">名称 <span style={{ color: '#9CA3AF' }}>（可自定义）</span></label>
         <input
           type="text"
           value={form.name}
           onChange={(e) => onChange({ ...form, name: e.target.value })}
-          placeholder="如：全部空间、医疗知识库"
+          placeholder="如：医疗知识库"
           className={inputCls}
         />
       </div>

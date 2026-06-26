@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect, useRef } from 'react';
-import { ArrowLeft, BookMarked, Boxes, FolderPlus, RefreshCw, AlertCircle, Clock, ChevronLeft, ChevronRight, Star, Share2, MoreHorizontal } from 'lucide-react';
+import { ArrowLeft, BookMarked, Boxes, FolderPlus, RefreshCw, AlertCircle, ChevronLeft, ChevronRight, Star, Share2, MoreHorizontal } from 'lucide-react';
 import type { KbApiClient } from '../lib/api';
 import type { FileListItem } from '../lib/types';
 import { useReadmePreview } from '../lib/hooks';
@@ -50,16 +50,12 @@ function ProjectCard({ project, client, isStarred, onClick, onToggleStar, onCont
   const [c1, c2] = nameToGradient(project.name);
   const initial = project.name.charAt(0);
 
-  const updateDate = project.updateTime
-    ? new Date(project.updateTime).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
-    : null;
-
   return (
     <div
       onClick={onClick}
       className="group cursor-pointer transition-all duration-200 hover:-translate-y-1.5"
       style={{
-        height: 256,
+        height: 276,
         borderRadius: 12,
         overflow: 'hidden',
         background: '#FFFFFF',
@@ -118,23 +114,23 @@ function ProjectCard({ project, client, isStarred, onClick, onToggleStar, onCont
       </div>
 
       {/* Info section */}
-      <div style={{ height: 128, padding: '12px 16px 14px', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ flex: 1, fontSize: 13, color: '#4B5563', lineHeight: 1.55, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' } as React.CSSProperties}>
+      <div style={{ height: 148, padding: '12px 16px 14px', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, fontSize: 13, color: '#4B5563', lineHeight: 1.55, overflow: 'hidden' }}>
           {previewLoading ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
               <div className="animate-pulse" style={{ height: 9, background: '#ECECE6', borderRadius: 2 }} />
               <div className="animate-pulse" style={{ height: 9, background: '#ECECE6', borderRadius: 2, width: '80%' }} />
+              <div className="animate-pulse" style={{ height: 9, background: '#ECECE6', borderRadius: 2, width: '92%' }} />
+              <div className="animate-pulse" style={{ height: 9, background: '#ECECE6', borderRadius: 2, width: '70%' }} />
             </div>
-          ) : preview ? preview : (
+          ) : preview ? (
+            <div style={{ overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 6, WebkitBoxOrient: 'vertical', textOverflow: 'ellipsis', wordBreak: 'break-word' } as React.CSSProperties}>
+              {preview}
+            </div>
+          ) : (
             <span style={{ color: '#9CA3AF', fontStyle: 'italic' }}>暂无简介</span>
           )}
         </div>
-        {updateDate && (
-          <div style={{ fontSize: 11, color: '#9CA3AF', display: 'flex', alignItems: 'center', gap: 4, marginTop: 8, flexShrink: 0 }}>
-            <Clock style={{ width: 11, height: 11 }} />
-            {updateDate}
-          </div>
-        )}
       </div>
     </div>
   );
@@ -386,7 +382,7 @@ export function ProjectsHub({
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(196px, 1fr))', gap: 20 }}>
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="animate-pulse" style={{ height: 256, borderRadius: 12, background: '#ECECE6' }} />
+            <div key={i} className="animate-pulse" style={{ height: 276, borderRadius: 12, background: '#ECECE6' }} />
           ))}
         </div>
       </div>

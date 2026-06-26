@@ -3,8 +3,9 @@
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Settings, ChevronDown, LogOut } from 'lucide-react';
+import { Settings, ChevronDown, LogOut, FolderPlus, BookMarked } from 'lucide-react';
 import { ConfigModal } from './components/ConfigModal';
+import { DirectoryPickerModal, type DirectorySelection } from './components/DirectoryPickerModal';
 import { DingTalkLogin } from './components/DingTalkLogin';
 import { ProjectsHub } from './components/ProjectsHub';
 import { ProjectDetail } from './components/ProjectDetail';
@@ -25,6 +26,58 @@ import type { FileListItem } from './lib/types';
 
 type View = 'hub' | 'project';
 type HubMode = 'spaces' | 'directories' | 'projects';
+
+function FirstRunOnboarding({
+  onChooseDirectory,
+  onOpenSettings,
+}: {
+  onChooseDirectory: () => void;
+  onOpenSettings: () => void;
+}) {
+  return (
+    <div className="flex-1 flex items-center justify-center px-8">
+      <div className="w-full max-w-xl text-center">
+        <div
+          className="mx-auto mb-6 flex items-center justify-center"
+          style={{
+            width: 64,
+            height: 64,
+            borderRadius: 18,
+            background: '#EEF4FF',
+            color: '#2563EB',
+            border: '1px solid #DCE8FF',
+          }}
+        >
+          <BookMarked className="w-7 h-7" />
+        </div>
+        <h1 style={{ color: '#1A1A1A', fontSize: 24, fontWeight: 700, letterSpacing: 0 }}>
+          创建第一个书架
+        </h1>
+        <p style={{ color: '#6B7280', fontSize: 14, lineHeight: 1.7, marginTop: 10 }}>
+          选择一个空间目录后，系统会把它作为书架入口。后续进入系统会直接打开已配置的书架。
+        </p>
+        <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
+          <button
+            onClick={onChooseDirectory}
+            className="inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors hover:opacity-90"
+            style={{ background: '#1A1A1A', color: '#FFFFFF' }}
+          >
+            <FolderPlus className="w-4 h-4" />
+            选择目录
+          </button>
+          <button
+            onClick={onOpenSettings}
+            className="inline-flex items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-[#F0EFEA]"
+            style={{ borderColor: '#E8E8E5', color: '#4B5563', background: '#FFFFFF' }}
+          >
+            <Settings className="w-4 h-4" />
+            打开设置
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function App() {
   const {
@@ -65,6 +118,7 @@ function App() {
   const [selectedSpace, setSelectedSpace] = useState<FileListItem | null>(null);
   const [selectedProject, setSelectedProject] = useState<FileListItem | null>(null);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+  const [isDirectoryPickerOpen, setIsDirectoryPickerOpen] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement>(null);
 
@@ -103,12 +157,19 @@ function App() {
   // 客户端就绪后加载首页列表：默认展示当前登录用户可见空间，自定义目录展示其子项目。
   useEffect(() => {
     if (!client) return;
+    if (!activeSpace) {
+      setHubMode('projects');
+      setSelectedSpace(null);
+      setSelectedProject(null);
+      setView('hub');
+      return;
+    }
     setHubMode(activeSpace?.directoryId ? 'projects' : 'spaces');
     setSelectedSpace(null);
     setSelectedProject(null);
     setView('hub');
     loadProjects();
-  }, [client, loadProjects, activeSpace?.directoryId]);
+  }, [client, loadProjects, activeSpace?.id, activeSpace?.directoryId]);
 
   // 点击外部关闭空间切换下拉
   useEffect(() => {
@@ -158,10 +219,11 @@ function App() {
     if (!success) throw new Error('Failed to initialize API client');
     // ConfigModal 已将 spaces/previewMode 写入 localStorage，此处同步到 state
     const newConfig = getConfig();
+    const nextActiveSpace = newConfig.spaces.find((space) => space.id === newConfig.activeSpaceId);
     setSpaces(newConfig.spaces);
     setActiveSpaceId(newConfig.activeSpaceId);
     setView('hub');
-    setHubMode(newConfig.spaces.find((space) => space.id === newConfig.activeSpaceId)?.directoryId ? 'projects' : 'spaces');
+    setHubMode(nextActiveSpace ? (nextActiveSpace.directoryId ? 'projects' : 'spaces') : 'projects');
     setSelectedSpace(null);
     setSelectedProject(null);
   }, [authSession?.xgToken, initOpenApiClient, initTokenClient]);
@@ -210,15 +272,14 @@ function App() {
     loadProjects();
   }, [loadProjects, loadSpaceProjects, selectedSpace]);
 
-  const handleAddDirectoryToBookshelf = useCallback((directory: FileListItem) => {
-    const directoryId = String(directory.id);
+  const saveDirectoryToBookshelf = useCallback((directoryId: string, name: string) => {
     const newEntry: SpaceEntry = {
       id: `directory-${directoryId}`,
-      name: directory.name,
+      name,
       directoryId,
     };
     const nextSpaces = spaces.some((space) => space.directoryId === directoryId)
-      ? spaces.map((space) => space.directoryId === directoryId ? { ...space, name: space.name || directory.name } : space)
+      ? spaces.map((space) => space.directoryId === directoryId ? { ...space, name: space.name || name } : space)
       : [...spaces, newEntry];
     const activeEntry = nextSpaces.find((space) => space.directoryId === directoryId) ?? newEntry;
 
@@ -231,6 +292,15 @@ function App() {
     setHubMode('projects');
     setView('hub');
   }, [spaces]);
+
+  const handleAddDirectoryToBookshelf = useCallback((directory: FileListItem) => {
+    saveDirectoryToBookshelf(String(directory.id), directory.name);
+  }, [saveDirectoryToBookshelf]);
+
+  const handleFirstRunDirectorySelect = useCallback((selection: DirectorySelection) => {
+    saveDirectoryToBookshelf(selection.directoryId, selection.name);
+    setIsDirectoryPickerOpen(false);
+  }, [saveDirectoryToBookshelf]);
 
   const isConnecting = clientLoading;
   const activeSpaceName = !activeSpace?.directoryId
@@ -419,6 +489,11 @@ function App() {
               </button>
             </div>
           </div>
+        ) : spaces.length === 0 ? (
+          <FirstRunOnboarding
+            onChooseDirectory={() => setIsDirectoryPickerOpen(true)}
+            onOpenSettings={() => setIsConfigModalOpen(true)}
+          />
         ) : view === 'project' && selectedProject ? (
           <ProjectDetail
             client={client}
@@ -450,6 +525,13 @@ function App() {
         client={client}
         onClose={() => setIsConfigModalOpen(false)}
         onSave={handleConfigSave}
+      />
+      <DirectoryPickerModal
+        isOpen={isDirectoryPickerOpen}
+        client={client}
+        existingSpaces={spaces}
+        onClose={() => setIsDirectoryPickerOpen(false)}
+        onSelect={handleFirstRunDirectorySelect}
       />
     </div>
   );

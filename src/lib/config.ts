@@ -10,7 +10,7 @@ export type ApiMode = 'token' | 'open-api';
 export interface SpaceEntry {
   id: string;
   name: string;        // empty = resolve from directoryId when possible
-  directoryId: string; // empty = all visible projects for the current user
+  directoryId: string; // new entries should use a concrete folder directoryId
 }
 
 export interface Config {
@@ -22,19 +22,13 @@ export interface Config {
   activeSpaceId: string;
 }
 
-const DEFAULT_SPACE: SpaceEntry = {
-  id: 'personal',
-  name: '全部空间',
-  directoryId: '',
-};
-
 const DEFAULT_CONFIG: Config = {
   apiMode: 'token',
   serverUrl: import.meta.env.VITE_SERVER_URL || DEFAULT_SERVER_URL,
   appKey: import.meta.env.VITE_APP_KEY || '',
   previewMode: 'self',
-  spaces: [DEFAULT_SPACE],
-  activeSpaceId: 'personal',
+  spaces: [],
+  activeSpaceId: '',
 };
 
 const STORAGE_KEY = 'xgkb_explorer_config';
@@ -56,7 +50,7 @@ function normalizeSpaceEntry(entry: Partial<SpaceEntry> & {
 
   const rawName = typeof entry.name === 'string' ? entry.name.trim() : '';
   const name = !directoryId && id === 'personal' && rawName === '个人书架'
-    ? DEFAULT_SPACE.name
+    ? '全部空间'
     : rawName;
 
   return {
@@ -73,12 +67,8 @@ export function getConfig(): Config {
       const parsed = JSON.parse(stored);
       // 迁移旧版 projectsPath 字段
       if (parsed.projectsPath && !parsed.spaces) {
-        parsed.spaces = [{
-          id: 'personal',
-          name: '全部空间',
-          directoryId: '',
-        }];
-        parsed.activeSpaceId = 'personal';
+        parsed.spaces = [];
+        parsed.activeSpaceId = '';
         delete parsed.projectsPath;
       }
       const merged = { ...DEFAULT_CONFIG, ...parsed };
@@ -87,10 +77,9 @@ export function getConfig(): Config {
       }
       merged.spaces = Array.isArray(parsed.spaces)
         ? parsed.spaces.map(normalizeSpaceEntry)
-        : [DEFAULT_SPACE];
-      if (!merged.spaces.length) merged.spaces = [DEFAULT_SPACE];
+        : [];
       if (!merged.activeSpaceId || !merged.spaces.some((space: SpaceEntry) => space.id === merged.activeSpaceId)) {
-        merged.activeSpaceId = merged.spaces[0].id;
+        merged.activeSpaceId = merged.spaces[0]?.id ?? '';
       }
       return merged;
     }

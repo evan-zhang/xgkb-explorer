@@ -384,6 +384,11 @@ export function DirectoryPickerModal({
                 </span>
                 <span className="truncate">{view === 'spaces' ? '空间列表' : selectedSpace?.name}</span>
               </h2>
+              {view === 'spaces' && (
+                <p style={{ color: '#9CA3AF', fontSize: 12, marginTop: 4 }}>
+                  选择一个空间，继续浏览其目录结构并添加到书架
+                </p>
+              )}
             </div>
           </div>
           <button
@@ -399,19 +404,6 @@ export function DirectoryPickerModal({
         <div className="flex-1 min-h-0 overflow-hidden">
           {view === 'spaces' && (
             <div className="h-full overflow-y-auto px-8 py-7" style={{ background: '#FAFAF7' }}>
-              <div className="mb-6 flex items-end justify-between gap-4">
-                <div>
-                  <p style={{ color: '#2563EB', fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 6 }}>系统空间</p>
-                  <p style={{ color: '#9CA3AF', fontSize: 12 }}>选择一个空间，继续浏览其目录结构并添加到书架</p>
-                </div>
-                {!rootLoading && !rootError && (
-                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-blue-100 bg-blue-50 px-2.5 py-1" style={{ color: '#1D4ED8', fontSize: 10, fontWeight: 600 }}>
-                    <span style={{ width: 6, height: 6, borderRadius: 999, background: '#2563EB' }} />
-                    共 {spaces.length} 个空间
-                  </span>
-                )}
-              </div>
-
               {rootLoading ? (
                 <div className="h-72 flex items-center justify-center" style={{ color: '#9CA3AF' }}>
                   <div className="text-center">
