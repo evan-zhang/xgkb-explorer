@@ -1,0 +1,6 @@
+{
+  "name": "玄关知识库",
+  "description": "玄关知识库文件浏览器，提供对投前项目、 references、以及项目文件夹结构的动态导航、搜索、分享与预览。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
