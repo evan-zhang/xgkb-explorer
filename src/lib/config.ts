@@ -20,6 +20,7 @@ export interface Config {
   previewMode: 'self' | 'kb';
   spaces: SpaceEntry[];
   activeSpaceId: string;
+  settingsRevision?: string | null;
 }
 
 const DEFAULT_CONFIG: Config = {
@@ -29,9 +30,11 @@ const DEFAULT_CONFIG: Config = {
   previewMode: 'self',
   spaces: [],
   activeSpaceId: '',
+  settingsRevision: null,
 };
 
 const STORAGE_KEY = 'xgkb_explorer_config';
+const STARRED_KEY = 'xgkb:starred_projects';
 
 function normalizeSpaceEntry(entry: Partial<SpaceEntry> & {
   spaceId?: unknown;
@@ -81,6 +84,9 @@ export function getConfig(): Config {
       if (!merged.activeSpaceId || !merged.spaces.some((space: SpaceEntry) => space.id === merged.activeSpaceId)) {
         merged.activeSpaceId = merged.spaces[0]?.id ?? '';
       }
+      merged.settingsRevision = typeof merged.settingsRevision === 'string'
+        ? merged.settingsRevision
+        : null;
       return merged;
     }
   } catch (e) {
@@ -109,5 +115,25 @@ export function clearConfig(): void {
     localStorage.removeItem(STORAGE_KEY);
   } catch (e) {
     console.error('Failed to clear config from localStorage:', e);
+  }
+}
+
+export function getStarredProjectIds(): string[] {
+  try {
+    const raw = localStorage.getItem(STARRED_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return [...new Set(parsed.map((value) => String(value)).filter(Boolean))];
+  } catch {
+    return [];
+  }
+}
+
+export function saveStarredProjectIds(projectIds: string[]): void {
+  try {
+    localStorage.setItem(STARRED_KEY, JSON.stringify([...new Set(projectIds.map(String).filter(Boolean))]));
+  } catch (e) {
+    console.error('Failed to save starred projects to localStorage:', e);
   }
 }

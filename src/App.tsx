@@ -10,7 +10,16 @@ import { DingTalkLogin } from './components/DingTalkLogin';
 import { ProjectsHub } from './components/ProjectsHub';
 import { ProjectDetail } from './components/ProjectDetail';
 import { useApiClient, useProjectsHub } from './lib/hooks';
-import { saveConfig, getConfig } from './lib/config';
+import { saveConfig, getConfig, getStarredProjectIds, saveStarredProjectIds } from './lib/config';
+import {
+  fetchUserSettings,
+  getLocalUserSettings,
+  hasLocalSettingsData,
+  putUserSettings,
+  saveSyncedSettings,
+  SettingsConflictError,
+  type UserSettingsV1,
+} from './lib/settings';
 import {
   cleanDingTalkCallbackUrl,
   clearAuthSession,
@@ -89,12 +98,18 @@ function App() {
     loadSavedClient,
   } = useApiClient();
   const [authSession, setAuthSession] = useState<AuthSession | null>(() => getAuthSession());
+  const authSessionRef = useRef<AuthSession | null>(authSession);
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [settingsSyncError, setSettingsSyncError] = useState<string | null>(null);
+  const [isSettingsLoading, setIsSettingsLoading] = useState(false);
+  const settingsRevisionRef = useRef<string | null>(getConfig().settingsRevision ?? null);
 
   // 空间列表 & 激活项
   const [spaces, setSpaces] = useState<SpaceEntry[]>(() => getConfig().spaces);
   const [activeSpaceId, setActiveSpaceId] = useState<string>(() => getConfig().activeSpaceId);
+  const [previewMode, setPreviewMode] = useState<'self' | 'kb'>(() => getConfig().previewMode);
+  const [starredProjectIds, setStarredProjectIds] = useState<string[]>(() => getStarredProjectIds());
   const [showSpaceSwitcher, setShowSpaceSwitcher] = useState(false);
   const switcherRef = useRef<HTMLDivElement>(null);
 
@@ -122,6 +137,97 @@ function App() {
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    authSessionRef.current = authSession;
+  }, [authSession]);
+
+  const applySettingsState = useCallback((settings: UserSettingsV1, revision: string | null) => {
+    const normalized = saveSyncedSettings(settings, revision);
+    settingsRevisionRef.current = revision;
+    setSpaces(normalized.spaces);
+    setActiveSpaceId(normalized.activeSpaceId);
+    setPreviewMode(normalized.previewMode);
+    setStarredProjectIds(normalized.starredProjectIds);
+    setSelectedSpace(null);
+    setSelectedProject(null);
+    setView('hub');
+    const nextActiveSpace = normalized.spaces.find((space) => space.id === normalized.activeSpaceId);
+    setHubMode(nextActiveSpace ? (nextActiveSpace.directoryId ? 'projects' : 'spaces') : 'projects');
+  }, []);
+
+  const syncSettings = useCallback(async (
+    settings: UserSettingsV1,
+    options: {
+      baseRevision?: string | null;
+      token?: string;
+      identity?: { corpId?: string | number; employeeId?: string | number };
+    } = {},
+  ) => {
+    const currentSession = authSessionRef.current;
+    const accessToken = options.token ?? currentSession?.xgToken;
+    if (!accessToken) return;
+    const session = options.token ? null : currentSession;
+
+    try {
+      setSettingsSyncError(null);
+      const envelope = await putUserSettings(
+        accessToken,
+        settings,
+        options.baseRevision !== undefined ? options.baseRevision : settingsRevisionRef.current,
+        options.identity ?? (session
+          ? { corpId: session.corpId, employeeId: session.user.id }
+          : undefined),
+      );
+      if (envelope.settings) {
+        applySettingsState(envelope.settings, envelope.revision);
+      } else {
+        settingsRevisionRef.current = envelope.revision;
+        saveConfig({ settingsRevision: envelope.revision });
+      }
+    } catch (e) {
+      if (e instanceof SettingsConflictError && e.current?.settings) {
+        applySettingsState(e.current.settings, e.current.revision);
+        setSettingsSyncError('云端配置已更新，已刷新为服务器版本');
+        return;
+      }
+      setSettingsSyncError(e instanceof Error ? e.message : String(e));
+    }
+  }, [applySettingsState]);
+
+  const persistSettingsChange = useCallback((settings: UserSettingsV1) => {
+    const normalized = saveSyncedSettings(settings, settingsRevisionRef.current);
+    setSpaces(normalized.spaces);
+    setActiveSpaceId(normalized.activeSpaceId);
+    setPreviewMode(normalized.previewMode);
+    setStarredProjectIds(normalized.starredProjectIds);
+    void syncSettings(normalized);
+    return normalized;
+  }, [syncSettings]);
+
+  const loadCloudSettings = useCallback(async (session: AuthSession) => {
+    setIsSettingsLoading(true);
+    setSettingsSyncError(null);
+    try {
+      const identity = { corpId: session.corpId, employeeId: session.user.id };
+      const envelope = await fetchUserSettings(session.xgToken, identity);
+      if (envelope.exists && envelope.settings) {
+        applySettingsState(envelope.settings, envelope.revision);
+        return;
+      }
+
+      const localSettings = getLocalUserSettings();
+      settingsRevisionRef.current = envelope.revision;
+      saveConfig({ settingsRevision: envelope.revision });
+      if (hasLocalSettingsData(localSettings) && window.confirm('检测到本机已有书架配置，是否迁移到服务器以便跨浏览器同步？')) {
+        await syncSettings(localSettings, { baseRevision: envelope.revision, token: session.xgToken, identity });
+      }
+    } catch (e) {
+      setSettingsSyncError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setIsSettingsLoading(false);
+    }
+  }, [applySettingsState, syncSettings]);
+
   // 初始化：优先处理钉钉回调；已登录时用 xgToken 初始化知识库客户端。
   useEffect(() => {
     let cancelled = false;
@@ -137,12 +243,16 @@ function App() {
           setAuthSession(session);
           cleanDingTalkCallbackUrl();
           loadSavedClient(session.xgToken);
+          void loadCloudSettings(session);
           return;
         }
 
         const session = getAuthSession();
         setAuthSession(session);
-        if (session) loadSavedClient(session.xgToken);
+        if (session) {
+          loadSavedClient(session.xgToken);
+          void loadCloudSettings(session);
+        }
       } catch (e) {
         if (!cancelled) setAuthError(e instanceof Error ? e.message : String(e));
       } finally {
@@ -152,7 +262,7 @@ function App() {
 
     initAuth();
     return () => { cancelled = true; };
-  }, [loadSavedClient]);
+  }, [loadCloudSettings, loadSavedClient]);
 
   // 客户端就绪后加载首页列表：默认展示当前登录用户可见空间，自定义目录展示其子项目。
   useEffect(() => {
@@ -196,14 +306,15 @@ function App() {
 
   // 切换空间
   const switchSpace = useCallback((space: SpaceEntry) => {
-    setActiveSpaceId(space.id);
-    saveConfig({ activeSpaceId: space.id });
+    const nextSettings = getLocalUserSettings();
+    nextSettings.activeSpaceId = space.id;
+    persistSettingsChange(nextSettings);
     setShowSpaceSwitcher(false);
     setView('hub');
     setHubMode(space.directoryId ? 'projects' : 'spaces');
     setSelectedSpace(null);
     setSelectedProject(null);
-  }, []);
+  }, [persistSettingsChange]);
 
   // 配置保存回调
   const handleConfigSave = useCallback(async (options: {
@@ -217,23 +328,33 @@ function App() {
         : false
       : initOpenApiClient(options.appKey, options.serverUrl);
     if (!success) throw new Error('Failed to initialize API client');
-    // ConfigModal 已将 spaces/previewMode 写入 localStorage，此处同步到 state
+    // ConfigModal 已将 spaces/previewMode 写入 localStorage，此处同步到 state 并同步到云端。
     const newConfig = getConfig();
     const nextActiveSpace = newConfig.spaces.find((space) => space.id === newConfig.activeSpaceId);
+    const nextSettings: UserSettingsV1 = {
+      version: 1,
+      spaces: newConfig.spaces,
+      activeSpaceId: newConfig.activeSpaceId,
+      previewMode: newConfig.previewMode,
+      starredProjectIds,
+    };
     setSpaces(newConfig.spaces);
     setActiveSpaceId(newConfig.activeSpaceId);
+    setPreviewMode(newConfig.previewMode);
     setView('hub');
     setHubMode(nextActiveSpace ? (nextActiveSpace.directoryId ? 'projects' : 'spaces') : 'projects');
     setSelectedSpace(null);
     setSelectedProject(null);
-  }, [authSession?.xgToken, initOpenApiClient, initTokenClient]);
+    void syncSettings(nextSettings);
+  }, [authSession, initOpenApiClient, initTokenClient, starredProjectIds, syncSettings]);
 
   const handleLoginSuccess = useCallback((result: DingTalkLoginResult) => {
     const session = saveAuthSession(result);
     setAuthSession(session);
     setAuthError(null);
     loadSavedClient(session.xgToken);
-  }, [loadSavedClient]);
+    void loadCloudSettings(session);
+  }, [loadCloudSettings, loadSavedClient]);
 
   const handleLogout = useCallback(() => {
     clearAuthSession();
@@ -283,15 +404,19 @@ function App() {
       : [...spaces, newEntry];
     const activeEntry = nextSpaces.find((space) => space.directoryId === directoryId) ?? newEntry;
 
-    setSpaces(nextSpaces);
-    setActiveSpaceId(activeEntry.id);
-    saveConfig({ spaces: nextSpaces, activeSpaceId: activeEntry.id });
+    persistSettingsChange({
+      version: 1,
+      spaces: nextSpaces,
+      activeSpaceId: activeEntry.id,
+      previewMode,
+      starredProjectIds,
+    });
     setShowSpaceSwitcher(false);
     setSelectedSpace(null);
     setSelectedProject(null);
     setHubMode('projects');
     setView('hub');
-  }, [spaces]);
+  }, [persistSettingsChange, previewMode, spaces, starredProjectIds]);
 
   const handleAddDirectoryToBookshelf = useCallback((directory: FileListItem) => {
     saveDirectoryToBookshelf(String(directory.id), directory.name);
@@ -302,7 +427,21 @@ function App() {
     setIsDirectoryPickerOpen(false);
   }, [saveDirectoryToBookshelf]);
 
-  const isConnecting = clientLoading;
+  const handleToggleStar = useCallback((projectId: string) => {
+    const next = starredProjectIds.includes(projectId)
+      ? starredProjectIds.filter((id) => id !== projectId)
+      : [...starredProjectIds, projectId];
+    saveStarredProjectIds(next);
+    persistSettingsChange({
+      version: 1,
+      spaces,
+      activeSpaceId,
+      previewMode,
+      starredProjectIds: next,
+    });
+  }, [activeSpaceId, persistSettingsChange, previewMode, spaces, starredProjectIds]);
+
+  const isConnecting = clientLoading || isSettingsLoading;
   const activeSpaceName = !activeSpace?.directoryId
     ? (directoryName || activeSpace?.name || '全部空间')
     : (activeSpace?.name || directoryName || activeSpace.directoryId);
@@ -344,6 +483,11 @@ function App() {
         {authError && (
           <div className="fixed left-1/2 bottom-6 -translate-x-1/2 px-4 py-2 rounded-lg text-sm" style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>
             {authError}
+          </div>
+        )}
+        {settingsSyncError && (
+          <div className="fixed left-1/2 bottom-6 -translate-x-1/2 px-4 py-2 rounded-lg text-sm" style={{ background: '#FFF7ED', color: '#C2410C', border: '1px solid #FED7AA' }}>
+            书架云同步失败：{settingsSyncError}
           </div>
         )}
       </>
@@ -461,6 +605,11 @@ function App() {
                 <LogOut className="w-4 h-4" />
                 退出登录
               </button>
+              {settingsSyncError && (
+                <div className="px-2.5 py-2 text-xs leading-5" style={{ color: '#C2410C', background: '#FFF7ED' }}>
+                  书架云同步失败：{settingsSyncError}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -512,9 +661,11 @@ function App() {
             emptyText={hubEmptyText}
             preserveOrder={isSpacesHub || isDirectoryPicker}
             mode={isSpacesHub ? 'spaces' : isDirectoryPicker ? 'directories' : 'projects'}
+            starredProjectIds={starredProjectIds}
             onBack={selectedSpace ? handleBackToSpaces : undefined}
             onAddDirectory={handleAddDirectoryToBookshelf}
             onSelectProject={handleSelectProject}
+            onToggleStar={handleToggleStar}
             onReload={handleReloadHub}
           />
         )}
@@ -533,6 +684,14 @@ function App() {
         onClose={() => setIsDirectoryPickerOpen(false)}
         onSelect={handleFirstRunDirectorySelect}
       />
+      {settingsSyncError && (
+        <div
+          className="fixed left-1/2 bottom-6 z-50 -translate-x-1/2 px-4 py-2 rounded-lg text-sm"
+          style={{ background: '#FFF7ED', color: '#C2410C', border: '1px solid #FED7AA' }}
+        >
+          书架云同步失败：{settingsSyncError}
+        </div>
+      )}
     </div>
   );
 }

@@ -16,9 +16,9 @@ xgkb-explorer 目前把书架入口、当前书架选择、预览偏好和收藏
 
 ## 决策
 
-新增一个轻量的服务端用户 settings API，并按登录身份同步设置。
+新增服务端用户 settings API，并按登录身份同步设置。当前后端实现承载在 `document-database` 服务中。
 
-- settings API 暴露在 `/xgkb-settings-api/` 下。
+- settings API 暴露在 `/document-database/xgkb/v1/settings` 下；前端通过 `VITE_SETTINGS_API_BASE_URL` 可覆盖默认网关地址。
 - API 使用从登录 token 推导出的 `corpId:userId` 作为稳定用户 key。
 - 后端必须从 token 推导身份，不能信任请求 body 里的用户 id。
 - 前端继续保留 `localStorage`，作为快速缓存和离线兜底。
@@ -41,7 +41,7 @@ xgkb-explorer 目前把书架入口、当前书架选择、预览偏好和收藏
 - `apiMode`
 - `serverUrl`
 
-API 交接契约见 `docs/user-settings-sync-api.md`。
+API 对接契约见 `docs/settings-sync-api.md`。
 
 ## 影响
 

@@ -6,7 +6,6 @@ import { useReadmePreview } from '../lib/hooks';
 import { ContextMenu } from './ContextMenu';
 
 const PAGE_SIZE = 12;
-const STARRED_KEY = 'xgkb:starred_projects';
 
 const COVER_GRADIENTS: [string, string][] = [
   ['#1E3A5F', '#2D5B8E'],
@@ -23,17 +22,6 @@ function nameToGradient(name: string): [string, string] {
   let h = 0;
   for (let i = 0; i < name.length; i++) { h = (h << 5) - h + name.charCodeAt(i); h |= 0; }
   return COVER_GRADIENTS[Math.abs(h) % COVER_GRADIENTS.length];
-}
-
-function loadStarred(): Set<string> {
-  try {
-    const raw = localStorage.getItem(STARRED_KEY);
-    return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
-  } catch { return new Set(); }
-}
-
-function saveStarred(s: Set<string>) {
-  localStorage.setItem(STARRED_KEY, JSON.stringify([...s]));
 }
 
 interface ProjectCardProps {
@@ -305,9 +293,11 @@ interface ProjectsHubProps {
   emptyText?: string;
   preserveOrder?: boolean;
   mode?: 'spaces' | 'directories' | 'projects';
+  starredProjectIds?: string[];
   onBack?: () => void;
   onAddDirectory?: (directory: FileListItem) => void;
   onSelectProject: (project: FileListItem) => void;
+  onToggleStar?: (projectId: string) => void;
   onReload: () => void;
 }
 
@@ -321,14 +311,16 @@ export function ProjectsHub({
   emptyText = '该目录下没有项目',
   preserveOrder = false,
   mode = 'projects',
+  starredProjectIds = [],
   onBack,
   onAddDirectory,
   onSelectProject,
+  onToggleStar,
   onReload,
 }: ProjectsHubProps) {
   const handleReload = useCallback(() => onReload(), [onReload]);
   const [page, setPage] = useState(1);
-  const [starred, setStarred] = useState<Set<string>>(loadStarred);
+  const starred = new Set(starredProjectIds);
   const [menu, setMenu] = useState<{ item: FileListItem; x: number; y: number } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -347,15 +339,9 @@ export function ProjectsHub({
 
   const toggleStar = useCallback((projectId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setStarred(prev => {
-      const next = new Set(prev);
-      if (next.has(projectId)) next.delete(projectId);
-      else next.add(projectId);
-      saveStarred(next);
-      return next;
-    });
+    onToggleStar?.(projectId);
     setPage(1);
-  }, []);
+  }, [onToggleStar]);
 
   const byUpdateTime = (a: FileListItem, b: FileListItem) => {
     if (!a.updateTime && !b.updateTime) return 0;

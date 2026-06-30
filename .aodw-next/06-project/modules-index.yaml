@@ -31,15 +31,18 @@ modules:
     root: src/lib
     related_files:
       - src/lib/config.ts
+      - src/lib/settings.ts
       - src/components/ConfigModal.tsx
     owns:
       - localStorage schema
+      - user settings cloud sync cache
       - AppKey/server URL/preview mode persistence
       - directory entries and migration
     invariants:
       - never commit real AppKeys
       - migrations must preserve existing localStorage users
       - SpaceEntry uses directoryId; empty directoryId means current user's visible projects
+      - apiMode, serverUrl, and appKey remain local-only; do not upload them to settings API
     verify:
       - npm run build
       - switch AppKey and confirm projectId reloads

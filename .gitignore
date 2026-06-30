@@ -3,3 +3,6 @@ dist/
 .env
 .env.local
 *.png
+vite-dev*.log
+vite-dev.log
+vite-dev.err.log
