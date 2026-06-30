@@ -1,0 +1,4 @@
+interface:
+  display_name: "XGKB Directory Ingest"
+  short_description: "Ingest XGKB directory links into local content packs"
+  default_prompt: "Use $xgkb-directory-ingest to parse the XGKB directory link in my clipboard and summarize its files."
