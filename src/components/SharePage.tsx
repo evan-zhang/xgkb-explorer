@@ -1,8 +1,9 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertCircle, ChevronLeft, FileText, Folder, RefreshCw } from 'lucide-react';
 import { TokenApiClient } from '../lib/api';
+import { createBlobPreviewUrl } from '../lib/preview';
 import type { DirectoryShareParams } from '../lib/share';
-import type { DownloadInfoVO, FileListItem } from '../lib/types';
+import type { FileListItem } from '../lib/types';
 
 interface SharePageProps {
   share: DirectoryShareParams;
@@ -16,15 +17,17 @@ interface BreadcrumbItem {
 type PreviewState =
   | { phase: 'idle' }
   | { phase: 'loading'; file: FileListItem }
-  | { phase: 'ready'; file: FileListItem; url: string; kind: 'image' | 'frame' }
+  | { phase: 'ready'; file: FileListItem; url: string; kind: 'image' | 'frame'; blobUrl?: string }
   | { phase: 'error'; file: FileListItem; message: string };
+
+const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico'];
 
 function getFileSuffix(file: FileListItem): string {
   return (file.suffix || file.name.split('.').pop() || '').toLowerCase();
 }
 
 function isImageFile(file: FileListItem): boolean {
-  return ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico'].includes(getFileSuffix(file));
+  return IMAGE_EXTS.includes(getFileSuffix(file));
 }
 
 function formatSize(bytes?: number): string {
@@ -32,10 +35,6 @@ function formatSize(bytes?: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function resolvePreviewUrl(info: DownloadInfoVO): string {
-  return info.previewUrl || info.downloadUrl || '';
 }
 
 function SharePreview({
@@ -56,7 +55,9 @@ function SharePreview({
             {state.file.name}
           </p>
           {state.file.size ? (
-            <p className="mt-0.5 text-xs" style={{ color: '#9CA3AF' }}>{formatSize(state.file.size)}</p>
+            <p className="mt-0.5 text-xs" style={{ color: '#9CA3AF' }}>
+              {formatSize(state.file.size)}
+            </p>
           ) : null}
         </div>
         <button
@@ -120,6 +121,21 @@ export function SharePage({ share }: SharePageProps) {
   const [refreshKey, setRefreshKey] = useState(0);
   const [preview, setPreview] = useState<PreviewState>({ phase: 'idle' });
 
+  const closePreview = useCallback(() => {
+    setPreview((current) => {
+      if (current.phase === 'ready' && current.blobUrl) {
+        URL.revokeObjectURL(current.blobUrl);
+      }
+      return { phase: 'idle' };
+    });
+  }, []);
+
+  useEffect(() => () => {
+    if (preview.phase === 'ready' && preview.blobUrl) {
+      URL.revokeObjectURL(preview.blobUrl);
+    }
+  }, [preview]);
+
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);
@@ -156,19 +172,26 @@ export function SharePage({ share }: SharePageProps) {
   }, [breadcrumb]);
 
   const openFile = useCallback(async (file: FileListItem) => {
+    closePreview();
     setPreview({ phase: 'loading', file });
     const result = await client.getDownloadInfo(String(file.id));
     if (!result.ok) {
       setPreview({ phase: 'error', file, message: result.error });
       return;
     }
-    const url = resolvePreviewUrl(result.value);
-    if (!url) {
+    if (!result.value.downloadUrl) {
       setPreview({ phase: 'error', file, message: '接口没有返回可预览地址。' });
       return;
     }
-    setPreview({ phase: 'ready', file, url, kind: isImageFile(file) ? 'image' : 'frame' });
-  }, [client]);
+
+    try {
+      const fileName = result.value.fileName || file.name;
+      const blobUrl = await createBlobPreviewUrl(result.value.downloadUrl, fileName);
+      setPreview({ phase: 'ready', file, url: blobUrl, blobUrl, kind: isImageFile(file) ? 'image' : 'frame' });
+    } catch (e) {
+      setPreview({ phase: 'error', file, message: e instanceof Error ? e.message : String(e) });
+    }
+  }, [client, closePreview]);
 
   return (
     <div className="flex h-screen flex-col bg-[#FAFAF7]">
@@ -281,7 +304,7 @@ export function SharePage({ share }: SharePageProps) {
       </main>
 
       {preview.phase !== 'idle' && (
-        <SharePreview state={preview} onClose={() => setPreview({ phase: 'idle' })} />
+        <SharePreview state={preview} onClose={closePreview} />
       )}
     </div>
   );

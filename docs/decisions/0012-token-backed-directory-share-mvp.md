@@ -26,6 +26,7 @@ This MVP intentionally prioritizes end-to-end usability. The share link carries 
 - When the app starts with `#/share`, bypass the login gate and render a dedicated read-only share page.
 - The share page initializes a token API client from the hash token and only exposes directory browsing and file preview.
 - The share page must not expose settings, bookshelf editing, starring, copy raw link, share again, or original new-tab file actions.
+- Shared file preview must not iframe the raw `downloadUrl`. It should fetch the file, infer a preview MIME type, and render a Blob URL, matching the main app's self-preview behavior so `Content-Disposition: attachment` does not force a browser download.
 
 ## Consequences
 
@@ -33,4 +34,3 @@ This MVP intentionally prioritizes end-to-end usability. The share link carries 
 - Token expiry or revocation will make the share link fail.
 - This is not a secure permission boundary. Anyone with the link can inspect and reuse the token.
 - A future production-grade version should replace this with a backend public share proxy or a scoped encrypted share payload.
-

@@ -11,7 +11,7 @@ const TEXT_EXTS = [
   'java', 'c', 'cpp', 'h', 'hpp', 'go', 'rs', 'rb', 'php',
 ];
 
-function inferPreviewMimeType(fileName: string, responseType: string): string {
+export function inferPreviewMimeType(fileName: string, responseType: string): string {
   const normalized = responseType.split(';')[0].trim().toLowerCase();
   if (normalized && normalized !== 'application/octet-stream') return responseType;
 
@@ -176,7 +176,7 @@ function renderMarkdown(markdown: string): string {
   return html.join('\n');
 }
 
-function buildMarkdownPreviewHtml(fileName: string, markdown: string): string {
+export function buildMarkdownPreviewHtml(fileName: string, markdown: string): string {
   const content = renderMarkdown(markdown);
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(fileName)}</title><style>:root{color-scheme:light;background:#F7F6F1}*{box-sizing:border-box}html,body{max-width:100%;overflow-x:hidden}body{margin:0;background:#F7F6F1;color:#24211D;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC",sans-serif}.shell{width:100%;max-width:940px;margin:0 auto;padding:56px 28px 96px}.doc{width:100%;max-width:100%;min-width:0;background:#fff;border:1px solid #E8E4DA;border-radius:10px;padding:44px 54px;box-shadow:0 18px 48px rgba(33,29,24,.08);overflow:hidden}.doc>*{max-width:100%}.meta{font-size:12px;color:#9A9488;margin-bottom:26px;display:flex;gap:8px;align-items:center;min-width:0;overflow-wrap:anywhere}.meta:before{content:"";width:7px;height:7px;border-radius:99px;background:#2563EB;flex:0 0 auto}h1,h2,h3,h4,h5,h6{font-family:Georgia,"Noto Serif SC",serif;color:#1F1D1A;line-height:1.28;margin:1.4em 0 .65em;font-weight:650;overflow-wrap:anywhere;word-break:break-word}h1{font-size:34px;margin-top:0;border-bottom:1px solid #ECE8DF;padding-bottom:18px}h2{font-size:25px;border-bottom:1px solid #EFECE5;padding-bottom:10px}h3{font-size:20px}p{font-size:16px;line-height:1.85;margin:1em 0;color:#34302A;overflow-wrap:anywhere;word-break:break-word}a{color:#1D4ED8;text-decoration:none;border-bottom:1px solid rgba(29,78,216,.22);overflow-wrap:anywhere;word-break:break-all}a:hover{border-bottom-color:currentColor}strong{font-weight:700;color:#1F1D1A}em{color:#575047}code{font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace;background:#F1EFE8;color:#8A3B12;border-radius:5px;padding:.14em .38em;font-size:.9em;white-space:normal;overflow-wrap:anywhere;word-break:break-word}pre{position:relative;max-width:100%;background:#202124;color:#F4F4F0;border-radius:10px;padding:42px 18px 18px;overflow-x:auto;overflow-y:hidden;margin:22px 0;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}pre code{background:transparent;color:inherit;padding:0;font-size:13px;line-height:1.65;display:block;min-width:0;width:max-content;max-width:none;white-space:pre;word-break:normal;overflow-wrap:normal}.code-lang{position:absolute;top:12px;left:16px;color:#A8A29A;font-size:11px;text-transform:uppercase;letter-spacing:.06em}blockquote{max-width:100%;margin:22px 0;padding:14px 18px;border-left:4px solid #2563EB;background:#F4F7FF;color:#4B5563;border-radius:0 8px 8px 0;overflow-wrap:anywhere}blockquote p{margin:0}ul,ol{padding-left:1.5em;margin:1em 0;max-width:100%}li{font-size:16px;line-height:1.8;margin:.25em 0;overflow-wrap:anywhere;word-break:break-word}table{border-collapse:collapse;width:max-content;min-width:100%;margin:24px 0;font-size:14px;border:1px solid #E5E1D8}table{display:table}thead{background:#F4F2EC}th,td{border:1px solid #E5E1D8;padding:10px 12px;text-align:left;vertical-align:top;max-width:360px;overflow-wrap:anywhere;word-break:break-word}th{font-weight:650;color:#2F2B25}table{border-radius:8px}table:where(:not(.x)){ }img{max-width:100%;height:auto;border-radius:8px;margin:16px 0}hr{border:0;border-top:1px solid #E8E4DA;margin:34px 0}@media(max-width:720px){.shell{padding:18px 12px 48px}.doc{padding:28px 22px;border-radius:8px}h1{font-size:28px}h2{font-size:22px}th,td{max-width:240px}}</style></head><body><main class="shell"><article class="doc"><div class="meta">${escapeHtml(fileName)}</div>${content}</article></main></body></html>`;
 }
@@ -211,6 +211,24 @@ async function openBlobPreview(target: Window, downloadUrl: string, fileName: st
   const blob = await response.blob();
   const previewType = inferPreviewMimeType(fileName, blob.type || contentType);
   setBlobPreview(target, new Blob([blob], { type: previewType }), fileName);
+}
+
+export async function createBlobPreviewUrl(downloadUrl: string, fileName: string): Promise<string> {
+  const response = await fetch(downloadUrl);
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  }
+
+  const contentType = response.headers.get('content-type') || 'application/octet-stream';
+  if (MD_EXTS.includes(fileName.split('.').pop()?.toLowerCase() || '')) {
+    return URL.createObjectURL(new Blob([
+      buildMarkdownPreviewHtml(fileName, await response.text()),
+    ], { type: 'text/html;charset=utf-8' }));
+  }
+
+  const blob = await response.blob();
+  const previewType = inferPreviewMimeType(fileName, blob.type || contentType);
+  return URL.createObjectURL(new Blob([blob], { type: previewType }));
 }
 
 export async function openFileInNewTab(client: KbApiClient, item: FileListItem): Promise<void> {
