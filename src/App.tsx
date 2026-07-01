@@ -3,14 +3,16 @@
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Settings, ChevronDown, LogOut, FolderPlus, BookMarked } from 'lucide-react';
+import { Settings, ChevronDown, LogOut, FolderPlus, BookMarked, Share2 } from 'lucide-react';
 import { ConfigModal } from './components/ConfigModal';
 import { DirectoryPickerModal, type DirectorySelection } from './components/DirectoryPickerModal';
 import { DingTalkLogin } from './components/DingTalkLogin';
 import { ProjectsHub } from './components/ProjectsHub';
 import { ProjectDetail } from './components/ProjectDetail';
+import { SharePage } from './components/SharePage';
 import { useApiClient, useProjectsHub } from './lib/hooks';
 import { saveConfig, getConfig, getStarredProjectIds, saveStarredProjectIds } from './lib/config';
+import { buildDirectoryShareUrl, parseDirectoryShareHash } from './lib/share';
 import {
   fetchUserSettings,
   getLocalUserSettings,
@@ -89,6 +91,7 @@ function FirstRunOnboarding({
 }
 
 function App() {
+  const shareParams = useMemo(() => parseDirectoryShareHash(), []);
   const {
     client,
     isLoading: clientLoading,
@@ -465,6 +468,26 @@ function App() {
       ? '该空间下没有可加入书架的目录'
       : '该目录下没有项目';
 
+  const handleShareActiveSpace = async () => {
+    if (!activeSpace?.directoryId || !authSession?.xgToken) return;
+    const shareName = activeSpaceName || activeSpace.name || activeSpace.directoryId;
+    const ok = window.confirm(`你是否需要分享「${shareName}」空间目录供他人预览？`);
+    if (!ok) return;
+
+    const shareUrl = buildDirectoryShareUrl({
+      directoryId: activeSpace.directoryId,
+      name: shareName,
+      token: authSession.xgToken,
+      serverUrl: getConfig().serverUrl,
+    });
+    await navigator.clipboard.writeText(shareUrl);
+    window.alert('分享链接已复制到剪切板。');
+  };
+
+  if (shareParams) {
+    return <SharePage share={shareParams} />;
+  }
+
   if (isAuthLoading) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center" style={{ background: '#FAFAF7', color: '#6B7280' }}>
@@ -521,7 +544,8 @@ function App() {
 
           {/* 空间切换下拉（仅 hub 视图显示） */}
           {view === 'hub' && spaces.length > 0 && (
-            <div className="relative" ref={switcherRef}>
+            <div className="flex items-center gap-1.5">
+              <div className="relative" ref={switcherRef}>
               <button
                 onClick={() => setShowSpaceSwitcher((v) => !v)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-[#ECECE6] transition-colors"
@@ -555,6 +579,17 @@ function App() {
                     </button>
                   ))}
                 </div>
+              )}
+              </div>
+              {activeSpace?.directoryId && (
+                <button
+                  onClick={handleShareActiveSpace}
+                  className="flex items-center justify-center rounded-lg border transition-colors hover:bg-[#ECECE6]"
+                  style={{ width: 32, height: 32, color: '#4B5563', borderColor: '#E8E8E5', background: '#FFFFFF' }}
+                  title="分享当前空间目录"
+                >
+                  <Share2 className="w-4 h-4" />
+                </button>
               )}
             </div>
           )}
