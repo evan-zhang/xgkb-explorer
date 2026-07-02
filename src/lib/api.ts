@@ -13,6 +13,7 @@ import type {
   FileMeta,
   PreviewTicketVO,
   ProjectInfo,
+  ShareToMeItem,
   ShareUrlVO,
 } from './types';
 import {
@@ -45,10 +46,31 @@ type ProjectListResponse = ProjectInfo[] | {
   rows?: ProjectInfo[];
 };
 
+type ShareToMeListResponse = ShareToMeItem[] | {
+  data?: ShareToMeItem[] | {
+    pageData?: ShareToMeItem[];
+    list?: ShareToMeItem[];
+    records?: ShareToMeItem[];
+    rows?: ShareToMeItem[];
+  };
+  pageData?: ShareToMeItem[];
+  list?: ShareToMeItem[];
+  records?: ShareToMeItem[];
+  rows?: ShareToMeItem[];
+};
+
 function normalizeProjectList(value: ProjectListResponse | null | undefined): ProjectInfo[] {
   if (!value) return [];
   if (Array.isArray(value)) return value;
   return value.records ?? value.list ?? value.rows ?? value.data ?? [];
+}
+
+function normalizeShareToMeList(value: ShareToMeListResponse | null | undefined): ShareToMeItem[] {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  if (Array.isArray(value.data)) return value.data;
+  if (value.data) return value.data.pageData ?? value.data.records ?? value.data.list ?? value.data.rows ?? [];
+  return value.pageData ?? value.records ?? value.list ?? value.rows ?? [];
 }
 
 export abstract class KbApiClient {
@@ -217,6 +239,20 @@ export abstract class KbApiClient {
   /** 获取文件/文件夹的分享预览短链 */
   async getShareUrl(fileId: string, source = 'open_api'): Promise<ApiResult<ShareUrlVO>> {
     return this.request<ShareUrlVO>('GET', API_PATHS.getShareUrl, { fileId, source });
+  }
+
+  async getShareToMeList(params: {
+    pageIndex?: number;
+    pageSize?: number;
+    employeeId: string | number;
+  }): Promise<ApiResult<ShareToMeItem[]>> {
+    const result = await this.request<ShareToMeListResponse>('GET', API_PATHS.getShareToMeList, {
+      pageIndex: params.pageIndex ?? 1,
+      pageSize: params.pageSize ?? 20,
+      employeeId: params.employeeId,
+    });
+    if (!result.ok) return result;
+    return { ok: true, value: normalizeShareToMeList(result.value) };
   }
 
   /** 子树扁平列举（含路径字段） */

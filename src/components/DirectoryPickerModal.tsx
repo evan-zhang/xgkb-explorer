@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import type { KbApiClient } from '../lib/api';
 import type { SpaceEntry } from '../lib/config';
-import type { FileListItem, ProjectInfo } from '../lib/types';
+import type { FileListItem, ProjectInfo, ShareToMeItem } from '../lib/types';
 
 export interface DirectorySelection {
   directoryId: string;
@@ -26,10 +26,12 @@ interface DirectoryPickerModalProps {
   isOpen: boolean;
   client: KbApiClient | null;
   existingSpaces: SpaceEntry[];
+  employeeId?: string | number;
   onClose: () => void;
   onSelect: (selection: DirectorySelection) => void;
 }
 
+type PickerTab = 'mine' | 'shared';
 type PickerView = 'spaces' | 'folders';
 
 interface PickerNode {
@@ -66,6 +68,34 @@ function toSpaceNode(project: ProjectInfo): PickerNode | null {
     kind: 'space',
     projectId,
     hasChild: true,
+  };
+}
+
+function getSharedDirectoryId(item: ShareToMeItem): string | null {
+  const id = item.directoryId ?? item.fileId ?? item.targetId ?? item.bizId ?? item.id;
+  return id === undefined || id === null ? null : String(id);
+}
+
+function getSharedDirectoryName(item: ShareToMeItem, id: string): string {
+  return (item.directoryName ?? item.fileName ?? item.name ?? item.title ?? String(id)).trim() || String(id);
+}
+
+function toSharedDirectoryNode(item: ShareToMeItem): PickerNode | null {
+  const fileType = item.fileType ?? item.type;
+  if (fileType !== undefined && Number(fileType) !== 1) return null;
+  const directoryId = getSharedDirectoryId(item);
+  if (!directoryId) return null;
+  const name = getSharedDirectoryName(item, directoryId);
+  return {
+    id: `shared-${directoryId}`,
+    name,
+    path: [name],
+    kind: 'folder',
+    directoryId,
+    hasChild: item.hasChild,
+    suffix: item.suffix,
+    size: item.size,
+    updateTime: item.updateTime,
   };
 }
 
@@ -117,11 +147,17 @@ export function DirectoryPickerModal({
   isOpen,
   client,
   existingSpaces,
+  employeeId,
   onClose,
   onSelect,
 }: DirectoryPickerModalProps) {
+  const [activeTab, setActiveTab] = useState<PickerTab>('mine');
   const [view, setView] = useState<PickerView>('spaces');
   const [spaces, setSpaces] = useState<PickerNode[]>([]);
+  const [sharedDirectories, setSharedDirectories] = useState<PickerNode[]>([]);
+  const [sharedLoaded, setSharedLoaded] = useState(false);
+  const [sharedLoading, setSharedLoading] = useState(false);
+  const [sharedError, setSharedError] = useState<string | null>(null);
   const [selectedSpace, setSelectedSpace] = useState<PickerNode | null>(null);
   const [currentFolder, setCurrentFolder] = useState<PickerNode | null>(null);
   const [selectedNode, setSelectedNode] = useState<PickerNode | null>(null);
@@ -145,8 +181,13 @@ export function DirectoryPickerModal({
 
   useEffect(() => {
     if (!isOpen) return;
+    setActiveTab('mine');
     setView('spaces');
     setSpaces([]);
+    setSharedDirectories([]);
+    setSharedLoaded(false);
+    setSharedLoading(false);
+    setSharedError(null);
     setSelectedSpace(null);
     setCurrentFolder(null);
     setSelectedNode(null);
@@ -186,6 +227,41 @@ export function DirectoryPickerModal({
       cancelled = true;
     };
   }, [client, isOpen]);
+
+  const loadSharedDirectories = useCallback(async () => {
+    if (!client) {
+      setSharedError('API 客户端未初始化');
+      setSharedLoaded(true);
+      return;
+    }
+    if (employeeId === undefined || employeeId === null || !String(employeeId).trim()) {
+      setSharedError('无法识别当前员工 ID');
+      setSharedLoaded(true);
+      return;
+    }
+
+    setSharedLoading(true);
+    setSharedError(null);
+    try {
+      const result = await client.getShareToMeList({
+        pageIndex: 1,
+        pageSize: 100,
+        employeeId,
+      });
+      if (!result.ok) {
+        setSharedError(result.error);
+        setSharedDirectories([]);
+        return;
+      }
+      setSharedDirectories(result.value.map(toSharedDirectoryNode).filter((node): node is PickerNode => node !== null));
+    } catch (error) {
+      setSharedError(error instanceof Error ? error.message : String(error));
+      setSharedDirectories([]);
+    } finally {
+      setSharedLoaded(true);
+      setSharedLoading(false);
+    }
+  }, [client, employeeId]);
 
   const loadChildren = useCallback(async (node: PickerNode) => {
     if (!client || childrenByNodeId[node.id] || loadingNodeIds.has(node.id)) return;
@@ -244,6 +320,16 @@ export function DirectoryPickerModal({
     void loadChildren(space);
   };
 
+  const enterSharedDirectory = (directory: PickerNode) => {
+    setSelectedSpace(directory);
+    setCurrentFolder(directory);
+    setSelectedNode(directory);
+    setCustomName(directory.name);
+    setView('folders');
+    setExpandedNodeIds((prev) => new Set(prev).add(directory.id));
+    void loadChildren(directory);
+  };
+
   const toggleFolder = (node: PickerNode, event?: React.MouseEvent) => {
     event?.stopPropagation();
     const isExpanded = expandedNodeIds.has(node.id);
@@ -292,6 +378,16 @@ export function DirectoryPickerModal({
   const visibleFileChildren = filterNodes(currentChildren.filter((node) => node.kind === 'file'));
   const currentLoading = Boolean(currentFolder && loadingNodeIds.has(currentFolder.id));
   const currentError = currentFolder ? nodeErrors[currentFolder.id] : undefined;
+  const rootNodes = activeTab === 'mine' ? spaces : sharedDirectories;
+  const rootListLoading = activeTab === 'mine' ? rootLoading : sharedLoading;
+  const rootListError = activeTab === 'mine' ? rootError : sharedError;
+
+  const switchRootTab = (tab: PickerTab) => {
+    setActiveTab(tab);
+    if (tab === 'shared' && !sharedLoaded && !sharedLoading) {
+      void loadSharedDirectories();
+    }
+  };
 
   const renderTreeNode = (node: PickerNode, depth = 0) => {
     const id = nodeKey(node);
@@ -377,19 +473,32 @@ export function DirectoryPickerModal({
                 <ArrowLeft className="w-4 h-4" />
               </button>
             )}
-            <div className="min-w-0">
-              <h2 className="flex items-center gap-2" style={{ color: '#111827', fontSize: 14, fontWeight: 700 }}>
-                <span className="flex items-center justify-center rounded-md" style={{ width: 22, height: 22, background: '#242526', color: '#FFFFFF', fontSize: 11, fontFamily: 'Georgia, serif' }}>
-                  玄
-                </span>
-                <span className="truncate">{view === 'spaces' ? '空间列表' : selectedSpace?.name}</span>
-              </h2>
-              {view === 'spaces' && (
-                <p style={{ color: '#9CA3AF', fontSize: 12, marginTop: 4 }}>
-                  选择一个空间，继续浏览其目录结构并添加到书架
-                </p>
-              )}
-            </div>
+            {view === 'spaces' ? (
+              <div className="inline-flex rounded-lg border bg-white p-1" style={{ borderColor: '#E5E7EB' }}>
+                {([
+                  ['mine', '我的空间'],
+                  ['shared', '分享给我的'],
+                ] as const).map(([tab, label]) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => switchRootTab(tab)}
+                    className="rounded-md px-3 py-1.5 text-sm font-semibold transition-colors"
+                    style={activeTab === tab
+                      ? { background: '#1A1A1A', color: '#FFFFFF' }
+                      : { background: 'transparent', color: '#6B7280' }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="min-w-0">
+                <div className="truncate" style={{ color: '#111827', fontSize: 14, fontWeight: 700 }}>
+                  {selectedSpace?.name}
+                </div>
+              </div>
+            )}
           </div>
           <button
             onClick={onClose}
@@ -404,39 +513,41 @@ export function DirectoryPickerModal({
         <div className="flex-1 min-h-0 overflow-hidden">
           {view === 'spaces' && (
             <div className="h-full overflow-y-auto px-8 py-7" style={{ background: '#FAFAF7' }}>
-              {rootLoading ? (
+              {rootListLoading ? (
                 <div className="h-72 flex items-center justify-center" style={{ color: '#9CA3AF' }}>
                   <div className="text-center">
                     <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
                     <p className="text-sm">加载空间中...</p>
                   </div>
                 </div>
-              ) : rootError ? (
+              ) : rootListError ? (
                 <div className="h-72 flex items-center justify-center px-6 text-center" style={{ color: '#DC2626' }}>
                   <div>
                     <AlertCircle className="w-8 h-8 mx-auto mb-2" />
-                    <p className="text-sm">{rootError}</p>
+                    <p className="text-sm">{rootListError}</p>
                   </div>
                 </div>
-              ) : spaces.length === 0 ? (
+              ) : rootNodes.length === 0 ? (
                 <div className="h-72 flex items-center justify-center" style={{ color: '#9CA3AF' }}>
-                  <p className="text-sm">暂无可见空间</p>
+                  <p className="text-sm">{activeTab === 'mine' ? '暂无可见空间' : '暂无分享给我的目录'}</p>
                 </div>
               ) : (
                 <div className="bg-white border border-[#E5E7EB] rounded-xl shadow-sm divide-y divide-[#F3F4F6] overflow-hidden">
-                  {spaces.map((space) => (
+                  {rootNodes.map((space) => (
                     <button
                       key={space.id}
-                      onClick={() => enterSpace(space)}
+                      onClick={() => activeTab === 'mine' ? enterSpace(space) : enterSharedDirectory(space)}
                       className="group w-full flex items-center justify-between gap-4 p-5 text-left hover:bg-[#FAFAFA] transition-colors"
                     >
                       <span className="flex items-start gap-4 min-w-0">
                         <span className="flex items-center justify-center rounded-lg flex-shrink-0" style={{ width: 38, height: 38, background: '#EFF6FF', color: '#2563EB', border: '1px solid #DBEAFE' }}>
-                          <Layers className="w-4 h-4" />
+                          {activeTab === 'mine' ? <Layers className="w-4 h-4" /> : <Folder className="w-4 h-4" />}
                         </span>
                         <span className="min-w-0">
                           <span className="block truncate" style={{ color: '#1F2937', fontSize: 14, fontWeight: 700 }}>{space.name}</span>
-                          <span className="block mt-1" style={{ color: '#9CA3AF', fontSize: 11 }}>空间 ID: {space.projectId}</span>
+                          <span className="block mt-1" style={{ color: '#9CA3AF', fontSize: 11 }}>
+                            {activeTab === 'mine' ? `空间 ID: ${space.projectId}` : `目录 ID: ${space.directoryId}`}
+                          </span>
                         </span>
                       </span>
                       <span className="flex items-center gap-1 flex-shrink-0" style={{ color: '#2563EB', fontSize: 12, fontWeight: 650 }}>

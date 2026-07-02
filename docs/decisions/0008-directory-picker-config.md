@@ -13,6 +13,7 @@ Settings previously required users to type a `directoryId` when adding a configu
 The app already has the APIs needed to browse the user's visible spaces and child folders:
 
 - `findAllProjects` for visible spaces.
+- `getShareToMeList` for directories shared to the current employee.
 - `getLevel1Folders(projectId)` for the first folder level under a space.
 - `getChildFiles(directoryId)` for nested folders.
 
@@ -22,7 +23,7 @@ Keep `directoryId` as the persisted locator, but make the primary settings flow 
 
 The picker loads folders lazily:
 
-- Root nodes are visible spaces.
+- Root nodes are split into tabs: "My Spaces" for visible spaces and "Shared With Me" for directories shared to the current employee.
 - Expanding a space loads first-level folders.
 - Expanding a folder loads child folders.
 - Only folder nodes can be selected as configured entries.

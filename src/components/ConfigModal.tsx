@@ -13,6 +13,7 @@ import type { ApiMode, SpaceEntry } from '../lib/config';
 interface ConfigModalProps {
   isOpen: boolean;
   client: KbApiClient | null;
+  employeeId?: string | number;
   onClose: () => void;
   onSave: (options: { apiMode: ApiMode; appKey: string; serverUrl: string }) => void | Promise<void>;
 }
@@ -38,7 +39,7 @@ interface EntryFormState {
   directoryId: string;
 }
 
-export function ConfigModal({ isOpen, client, onClose, onSave }: ConfigModalProps) {
+export function ConfigModal({ isOpen, client, employeeId, onClose, onSave }: ConfigModalProps) {
   const [apiMode, setApiMode] = useState<ApiMode>('token');
   const [appKey, setAppKey] = useState('');
   const [serverUrl, setServerUrl] = useState('');
@@ -380,6 +381,7 @@ export function ConfigModal({ isOpen, client, onClose, onSave }: ConfigModalProp
       isOpen={isDirectoryPickerOpen}
       client={client}
       existingSpaces={spaces}
+      employeeId={employeeId}
       onClose={() => setIsDirectoryPickerOpen(false)}
       onSelect={addDirectorySelection}
     />

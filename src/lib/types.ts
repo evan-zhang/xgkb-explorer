@@ -34,6 +34,7 @@ export interface ProjectInfo {
   name?: string;
   projectName?: string;
   title?: string;
+  fileType?: number | string;
   type?: number;
   createTime?: number;
   updateTime?: number;
@@ -79,6 +80,25 @@ export interface ShareUrlVO {
   shareUrl: string;
 }
 
+export interface ShareToMeItem {
+  id?: string | number;
+  fileId?: string | number;
+  directoryId?: string | number;
+  targetId?: string | number;
+  bizId?: string | number;
+  name?: string;
+  fileName?: string;
+  directoryName?: string;
+  title?: string;
+  fileType?: number | string;
+  type?: number;
+  hasChild?: boolean;
+  suffix?: string;
+  size?: number;
+  createTime?: number;
+  updateTime?: number;
+}
+
 // API 路径常量
 export const API_PATHS = {
   findAllProjects: 'document-database/project/findAllProjects',
@@ -93,6 +113,7 @@ export const API_PATHS = {
   listDescendantFiles: 'document-database/file/listDescendantFiles',
   getPreviewTicket: 'doc-preview/api/preview/ticket',
   getShareUrl: 'document-database/share/getShareUrl',
+  getShareToMeList: 'document-database/share/getShareToMeList',
 } as const;
 
 // 默认服务器地址

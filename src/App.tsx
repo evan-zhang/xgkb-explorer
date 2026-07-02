@@ -773,6 +773,7 @@ function App() {
       <ConfigModal
         isOpen={isConfigModalOpen}
         client={client}
+        employeeId={authSession?.user.id}
         onClose={() => setIsConfigModalOpen(false)}
         onSave={handleConfigSave}
       />
@@ -780,6 +781,7 @@ function App() {
         isOpen={isDirectoryPickerOpen}
         client={client}
         existingSpaces={spaces}
+        employeeId={authSession?.user.id}
         onClose={() => setIsDirectoryPickerOpen(false)}
         onSelect={handleFirstRunDirectorySelect}
       />
