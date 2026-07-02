@@ -29,11 +29,12 @@ interface ProjectCardProps {
   client: KbApiClient;
   isStarred: boolean;
   onClick: () => void;
-  onToggleStar: (e: React.MouseEvent) => void;
-  onContextMenu: (item: FileListItem, x: number, y: number) => void;
+  onToggleStar?: (e: React.MouseEvent) => void;
+  onContextMenu?: (item: FileListItem, x: number, y: number) => void;
+  readOnly?: boolean;
 }
 
-function ProjectCard({ project, client, isStarred, onClick, onToggleStar, onContextMenu }: ProjectCardProps) {
+function ProjectCard({ project, client, isStarred, onClick, onToggleStar, onContextMenu, readOnly = false }: ProjectCardProps) {
   const { preview, isLoading: previewLoading } = useReadmePreview(client, String(project.id));
   const [c1, c2] = nameToGradient(project.name);
   const initial = project.name.charAt(0);
@@ -65,40 +66,44 @@ function ProjectCard({ project, client, isStarred, onClick, onToggleStar, onCont
           {project.name}
         </div>
 
-        {/* More button */}
-        <button
-          onClick={(e) => { e.stopPropagation(); onContextMenu(project, e.clientX, e.clientY); }}
-          className="transition-all duration-150"
-          style={{
-            position: 'absolute', top: 8, right: 40,
-            width: 28, height: 28,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            borderRadius: 6,
-            background: 'rgba(255,255,255,0.15)',
-            color: 'rgba(255,255,255,0.85)',
-            border: 'none', cursor: 'pointer',
-          }}
-        >
-          <MoreHorizontal style={{ width: 14, height: 14 }} />
-        </button>
+        {!readOnly && (
+          <>
+            {/* More button */}
+            <button
+              onClick={(e) => { e.stopPropagation(); onContextMenu?.(project, e.clientX, e.clientY); }}
+              className="transition-all duration-150"
+              style={{
+                position: 'absolute', top: 8, right: 40,
+                width: 28, height: 28,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                borderRadius: 6,
+                background: 'rgba(255,255,255,0.15)',
+                color: 'rgba(255,255,255,0.85)',
+                border: 'none', cursor: 'pointer',
+              }}
+            >
+              <MoreHorizontal style={{ width: 14, height: 14 }} />
+            </button>
 
-        {/* Star button */}
-        <button
-          onClick={onToggleStar}
-          title={isStarred ? '取消收藏' : '收藏此项目'}
-          className="transition-all duration-150"
-          style={{
-            position: 'absolute', top: 8, right: 8,
-            width: 28, height: 28,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            borderRadius: 6,
-            background: isStarred ? 'rgba(252,211,77,0.2)' : 'rgba(255,255,255,0.12)',
-            color: isStarred ? '#FCD34D' : 'rgba(255,255,255,0.65)',
-            border: 'none', cursor: 'pointer',
-          }}
-        >
-          <Star style={{ width: 14, height: 14 }} fill={isStarred ? 'currentColor' : 'none'} />
-        </button>
+            {/* Star button */}
+            <button
+              onClick={onToggleStar}
+              title={isStarred ? '取消收藏' : '收藏此项目'}
+              className="transition-all duration-150"
+              style={{
+                position: 'absolute', top: 8, right: 8,
+                width: 28, height: 28,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                borderRadius: 6,
+                background: isStarred ? 'rgba(252,211,77,0.2)' : 'rgba(255,255,255,0.12)',
+                color: isStarred ? '#FCD34D' : 'rgba(255,255,255,0.65)',
+                border: 'none', cursor: 'pointer',
+              }}
+            >
+              <Star style={{ width: 14, height: 14 }} fill={isStarred ? 'currentColor' : 'none'} />
+            </button>
+          </>
+        )}
       </div>
 
       {/* Info section */}
@@ -298,7 +303,9 @@ interface ProjectsHubProps {
   onAddDirectory?: (directory: FileListItem) => void;
   onSelectProject: (project: FileListItem) => void;
   onToggleStar?: (projectId: string) => void;
+  onShareProject?: (project: FileListItem) => boolean | Promise<boolean>;
   onReload: () => void;
+  readOnly?: boolean;
 }
 
 export function ProjectsHub({
@@ -316,11 +323,13 @@ export function ProjectsHub({
   onAddDirectory,
   onSelectProject,
   onToggleStar,
+  onShareProject,
   onReload,
+  readOnly = false,
 }: ProjectsHubProps) {
   const handleReload = useCallback(() => onReload(), [onReload]);
   const [page, setPage] = useState(1);
-  const starred = new Set(starredProjectIds);
+  const starred = readOnly ? new Set<string>() : new Set(starredProjectIds);
   const [menu, setMenu] = useState<{ item: FileListItem; x: number; y: number } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -351,7 +360,7 @@ export function ProjectsHub({
   };
 
   const sortedAll = preserveOrder ? projects : [...projects].sort(byUpdateTime);
-  const starredProjects = preserveOrder ? [] : sortedAll.filter(p => starred.has(String(p.id)));
+  const starredProjects = preserveOrder || readOnly ? [] : sortedAll.filter(p => starred.has(String(p.id)));
   const unstarredProjects = preserveOrder ? sortedAll : sortedAll.filter(p => !starred.has(String(p.id)));
 
   const totalPages = Math.max(1, Math.ceil(unstarredProjects.length / PAGE_SIZE));
@@ -498,6 +507,7 @@ export function ProjectsHub({
                     onClick={() => onSelectProject(project)}
                     onToggleStar={(e) => toggleStar(String(project.id), e)}
                     onContextMenu={handleContextMenu}
+                    readOnly={readOnly}
                   />
                 ))}
               </div>
@@ -521,6 +531,7 @@ export function ProjectsHub({
                     onClick={() => onSelectProject(project)}
                     onToggleStar={(e) => toggleStar(String(project.id), e)}
                     onContextMenu={handleContextMenu}
+                    readOnly={readOnly}
                   />
                 ))}
               </div>
@@ -531,7 +542,7 @@ export function ProjectsHub({
         </>
       )}
 
-      {menu && (
+      {!readOnly && menu && (
         <ContextMenu
           x={menu.x}
           y={menu.y}
@@ -540,6 +551,12 @@ export function ProjectsHub({
               label: '分享',
               icon: <Share2 className="w-4 h-4" />,
               onClick: async () => {
+                if (onShareProject) {
+                  const copied = await onShareProject(menu.item);
+                  if (copied) showToast('分享链接已复制');
+                  setMenu(null);
+                  return;
+                }
                 const r = await client.getShareUrl(String(menu.item.id));
                 if (r.ok) {
                   await navigator.clipboard.writeText(r.value.shareUrl);

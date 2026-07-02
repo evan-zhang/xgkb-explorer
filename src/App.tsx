@@ -479,9 +479,65 @@ function App() {
       name: shareName,
       token: authSession.xgToken,
       serverUrl: getConfig().serverUrl,
+      view: 'bookshelf',
     });
     await navigator.clipboard.writeText(shareUrl);
     window.alert('分享链接已复制到剪切板。');
+  };
+
+  const handleShareBookshelfProject = async (project: FileListItem): Promise<boolean> => {
+    if (!authSession?.xgToken || !activeSpace?.directoryId) return false;
+    const shareName = project.name || String(project.id);
+    const ok = window.confirm(`你是否需要分享「${shareName}」供他人预览？`);
+    if (!ok) return false;
+
+    const shareUrl = buildDirectoryShareUrl({
+      directoryId: activeSpace.directoryId,
+      name: activeSpaceName || activeSpace.name || activeSpace.directoryId,
+      token: authSession.xgToken,
+      serverUrl: getConfig().serverUrl,
+      view: 'bookshelf',
+      itemId: String(project.id),
+      itemName: shareName,
+    });
+    await navigator.clipboard.writeText(shareUrl);
+    return true;
+  };
+
+  const handleShareNestedDirectory = async (directory: FileListItem): Promise<boolean> => {
+    if (!authSession?.xgToken || directory.type !== 1) return false;
+    const shareName = directory.name || String(directory.id);
+    const ok = window.confirm(`你是否需要分享「${shareName}」目录供他人预览？`);
+    if (!ok) return false;
+
+    const shareUrl = buildDirectoryShareUrl({
+      directoryId: String(directory.id),
+      name: shareName,
+      token: authSession.xgToken,
+      serverUrl: getConfig().serverUrl,
+      view: 'project',
+    });
+    await navigator.clipboard.writeText(shareUrl);
+    return true;
+  };
+
+  const handleShareFile = async (file: FileListItem, parentFolderId?: string): Promise<boolean> => {
+    if (!authSession?.xgToken || file.type === 1) return false;
+    const shareName = file.name || String(file.id);
+    const ok = window.confirm(`你是否需要分享「${shareName}」文件供他人预览？`);
+    if (!ok) return false;
+
+    const shareUrl = buildDirectoryShareUrl({
+      directoryId: parentFolderId || String(file.parentId ?? file.id),
+      name: shareName,
+      token: authSession.xgToken,
+      serverUrl: getConfig().serverUrl,
+      view: 'file',
+      itemId: String(file.id),
+      itemName: shareName,
+    });
+    await navigator.clipboard.writeText(shareUrl);
+    return true;
   };
 
   if (shareParams) {
@@ -684,6 +740,8 @@ function App() {
             projectId={selectedProjectId}
             project={selectedProject}
             onBack={handleBack}
+            onShareDirectory={handleShareNestedDirectory}
+            onShareFile={handleShareFile}
           />
         ) : (
           <ProjectsHub
@@ -701,6 +759,7 @@ function App() {
             onAddDirectory={handleAddDirectoryToBookshelf}
             onSelectProject={handleSelectProject}
             onToggleStar={handleToggleStar}
+            onShareProject={handleShareBookshelfProject}
             onReload={handleReloadHub}
           />
         )}

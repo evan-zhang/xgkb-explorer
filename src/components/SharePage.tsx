@@ -1,34 +1,22 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertCircle, ChevronLeft, FileText, Folder, RefreshCw } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AlertCircle, FileText, X } from 'lucide-react';
 import { TokenApiClient } from '../lib/api';
-import { createBlobPreviewUrl } from '../lib/preview';
+import { useProjectsHub } from '../lib/hooks';
+import { createBlobPreviewUrl, isImageFile } from '../lib/preview';
 import type { DirectoryShareParams } from '../lib/share';
 import type { FileListItem } from '../lib/types';
+import { ProjectDetail } from './ProjectDetail';
+import { ProjectsHub } from './ProjectsHub';
 
 interface SharePageProps {
   share: DirectoryShareParams;
 }
 
-interface BreadcrumbItem {
-  id: string;
-  name: string;
-}
-
 type PreviewState =
   | { phase: 'idle' }
   | { phase: 'loading'; file: FileListItem }
-  | { phase: 'ready'; file: FileListItem; url: string; kind: 'image' | 'frame'; blobUrl?: string }
+  | { phase: 'ready'; file: FileListItem; url: string; kind: 'image' | 'frame'; blobUrl: string }
   | { phase: 'error'; file: FileListItem; message: string };
-
-const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico'];
-
-function getFileSuffix(file: FileListItem): string {
-  return (file.suffix || file.name.split('.').pop() || '').toLowerCase();
-}
-
-function isImageFile(file: FileListItem): boolean {
-  return IMAGE_EXTS.includes(getFileSuffix(file));
-}
 
 function formatSize(bytes?: number): string {
   if (!bytes) return '';
@@ -47,59 +35,72 @@ function SharePreview({
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-white">
       <div
-        className="flex items-center justify-between border-b px-6 py-3"
+        className="flex flex-shrink-0 items-center justify-between border-b px-8 py-3"
         style={{ background: '#F5F3EE', borderColor: '#ECECE6' }}
       >
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium" style={{ color: '#1A1A1A' }}>
+        <div className="mr-4 min-w-0 flex-1">
+          <p
+            className="truncate text-sm font-medium"
+            style={{ fontFamily: 'Georgia, "Noto Serif SC", serif', color: '#1A1A1A' }}
+          >
             {state.file.name}
           </p>
           {state.file.size ? (
-            <p className="mt-0.5 text-xs" style={{ color: '#9CA3AF' }}>
+            <p className="mt-0.5 text-[11px]" style={{ color: '#9CA3AF' }}>
               {formatSize(state.file.size)}
             </p>
           ) : null}
         </div>
+
         <button
           onClick={onClose}
-          className="rounded-lg border px-3 py-1.5 text-sm transition-colors hover:bg-[#ECECE6]"
-          style={{ borderColor: '#E8E8E5', color: '#4B5563', background: '#FFFFFF' }}
+          title="关闭 (Esc)"
+          className="flex items-center justify-center transition-colors hover:bg-[#EDEBE4] hover:text-[#1A1A1A]"
+          style={{ width: 32, height: 32, borderRadius: 8, color: '#6B7280' }}
         >
-          关闭
+          <X className="h-4 w-4" />
         </button>
       </div>
 
-      <div className="flex-1 overflow-hidden">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {state.phase === 'loading' && (
-          <div className="flex h-full items-center justify-center">
+          <div className="flex flex-1 items-center justify-center">
             <div className="text-center" style={{ color: '#6B7280' }}>
               <div
-                className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full"
+                className="mx-auto mb-3 h-10 w-10 animate-spin rounded-full"
                 style={{ borderWidth: 2, borderStyle: 'solid', borderColor: '#ECECE6', borderTopColor: '#2563EB' }}
               />
-              <p className="text-sm">正在加载预览...</p>
+              <p className="text-sm">加载中...</p>
             </div>
           </div>
         )}
 
         {state.phase === 'error' && (
-          <div className="flex h-full items-center justify-center px-8 text-center">
-            <div>
-              <AlertCircle className="mx-auto mb-3 h-10 w-10" style={{ color: '#DC2626' }} />
-              <p className="mb-2 text-sm font-medium" style={{ color: '#DC2626' }}>预览失败</p>
-              <p className="text-xs" style={{ color: '#6B7280' }}>{state.message}</p>
+          <div className="flex flex-1 items-center justify-center">
+            <div className="px-8 text-center">
+              <AlertCircle className="mx-auto mb-4 h-12 w-12 opacity-70" style={{ color: '#DC2626' }} />
+              <p className="mb-2" style={{ color: '#DC2626' }}>预览失败</p>
+              <p className="text-[13px]" style={{ color: '#9CA3AF' }}>{state.message}</p>
             </div>
           </div>
         )}
 
         {state.phase === 'ready' && state.kind === 'image' && (
-          <div className="flex h-full items-center justify-center p-8" style={{ background: '#1A1A1A' }}>
-            <img src={state.url} alt={state.file.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+          <div className="flex flex-1 items-center justify-center p-8" style={{ background: '#1A1A1A' }}>
+            <img
+              src={state.url}
+              alt={state.file.name}
+              style={{ maxWidth: '100%', maxHeight: 'calc(100vh - 120px)', objectFit: 'contain', borderRadius: 8 }}
+            />
           </div>
         )}
 
         {state.phase === 'ready' && state.kind === 'frame' && (
-          <iframe src={state.url} title={state.file.name} className="h-full w-full border-0" />
+          <iframe
+            src={state.url}
+            title={state.file.name}
+            className="min-h-0 w-full flex-1 border-0"
+          />
         )}
       </div>
     </div>
@@ -111,69 +112,61 @@ export function SharePage({ share }: SharePageProps) {
     () => new TokenApiClient(share.token, share.serverUrl),
     [share.token, share.serverUrl],
   );
-  const [currentFolderId, setCurrentFolderId] = useState(share.directoryId);
-  const [breadcrumb, setBreadcrumb] = useState<BreadcrumbItem[]>([
-    { id: share.directoryId, name: share.name || share.directoryId },
-  ]);
-  const [files, setFiles] = useState<FileListItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const project = useMemo<FileListItem>(() => ({
+    id: share.directoryId,
+    name: share.name || share.directoryId,
+    type: 1,
+    entryKind: 'folder',
+  }), [share.directoryId, share.name]);
+  const sharedFile = useMemo<FileListItem>(() => ({
+    id: share.itemId || share.directoryId,
+    name: share.itemName || share.name || share.itemId || share.directoryId,
+    type: 0,
+  }), [share.directoryId, share.itemId, share.itemName, share.name]);
+  const shareView = share.view ?? 'project';
+  const {
+    projects,
+    isLoading: bookshelfLoading,
+    error: bookshelfError,
+    directoryName,
+    load: loadBookshelf,
+  } = useProjectsHub(client, shareView === 'bookshelf' ? share.directoryId : '');
+  const visibleProjects = useMemo(() => {
+    if (!share.itemId) return projects;
+    return projects.filter((item) => String(item.id) === share.itemId);
+  }, [projects, share.itemId]);
+  const [selectedProject, setSelectedProject] = useState<FileListItem | null>(null);
   const [preview, setPreview] = useState<PreviewState>({ phase: 'idle' });
 
   const closePreview = useCallback(() => {
-    setPreview((current) => {
-      if (current.phase === 'ready' && current.blobUrl) {
-        URL.revokeObjectURL(current.blobUrl);
-      }
-      return { phase: 'idle' };
-    });
+    setPreview({ phase: 'idle' });
   }, []);
 
-  useEffect(() => () => {
-    if (preview.phase === 'ready' && preview.blobUrl) {
-      URL.revokeObjectURL(preview.blobUrl);
-    }
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closePreview();
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [closePreview]);
+
+  useEffect(() => {
+    if (preview.phase !== 'ready') return;
+    return () => URL.revokeObjectURL(preview.blobUrl);
   }, [preview]);
 
   useEffect(() => {
-    let cancelled = false;
-    setIsLoading(true);
-    setError(null);
+    if (shareView === 'bookshelf') loadBookshelf();
+  }, [shareView, loadBookshelf]);
 
-    client.getChildFiles(currentFolderId).then((result) => {
-      if (cancelled) return;
-      if (!result.ok) {
-        setError(result.error);
-        setFiles([]);
-        setIsLoading(false);
-        return;
-      }
-      setFiles([...result.value].sort((a, b) => {
-        if (a.type === 1 && b.type !== 1) return -1;
-        if (a.type !== 1 && b.type === 1) return 1;
-        return 0;
-      }));
-      setIsLoading(false);
-    });
-
-    return () => { cancelled = true; };
-  }, [client, currentFolderId, refreshKey]);
-
-  const openFolder = useCallback((folder: FileListItem) => {
-    setCurrentFolderId(String(folder.id));
-    setBreadcrumb((prev) => [...prev, { id: String(folder.id), name: folder.name }]);
-  }, []);
-
-  const navigateToCrumb = useCallback((index: number) => {
-    const crumb = breadcrumb[index];
-    setCurrentFolderId(crumb.id);
-    setBreadcrumb((prev) => prev.slice(0, index + 1));
-  }, [breadcrumb]);
+  useEffect(() => {
+    setSelectedProject(null);
+  }, [share.directoryId, shareView]);
 
   const openFile = useCallback(async (file: FileListItem) => {
     closePreview();
     setPreview({ phase: 'loading', file });
+
     const result = await client.getDownloadInfo(String(file.id));
     if (!result.ok) {
       setPreview({ phase: 'error', file, message: result.error });
@@ -187,119 +180,119 @@ export function SharePage({ share }: SharePageProps) {
     try {
       const fileName = result.value.fileName || file.name;
       const blobUrl = await createBlobPreviewUrl(result.value.downloadUrl, fileName);
-      setPreview({ phase: 'ready', file, url: blobUrl, blobUrl, kind: isImageFile(file) ? 'image' : 'frame' });
+      setPreview({
+        phase: 'ready',
+        file,
+        url: blobUrl,
+        blobUrl,
+        kind: isImageFile(file) ? 'image' : 'frame',
+      });
     } catch (e) {
       setPreview({ phase: 'error', file, message: e instanceof Error ? e.message : String(e) });
     }
   }, [client, closePreview]);
 
+  useEffect(() => {
+    if (shareView === 'file') void openFile(sharedFile);
+  }, [shareView, sharedFile, openFile]);
+
   return (
     <div className="flex h-screen flex-col bg-[#FAFAF7]">
       <header
-        className="flex flex-shrink-0 items-center justify-between border-b px-6 py-4"
-        style={{ background: 'rgba(250,250,247,0.96)', borderColor: '#ECECE6' }}
+        className="flex flex-shrink-0 items-center justify-between border-b px-10 py-5"
+        style={{ background: 'rgba(250,250,247,0.92)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', borderColor: '#ECECE6', position: 'relative', zIndex: 40 }}
       >
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span
-              className="inline-flex h-7 w-7 items-center justify-center rounded-lg"
-              style={{ background: '#1A1A1A', color: '#F5E6D3', fontFamily: 'Georgia, serif', fontWeight: 700 }}
+        <div className="flex min-w-0 items-center gap-4">
+          <div className="flex flex-shrink-0 items-center gap-2.5">
+            <div
+              style={{
+                width: 30,
+                height: 30,
+                borderRadius: 8,
+                flexShrink: 0,
+                background: 'linear-gradient(135deg, #1A1A1A 0%, #3A3A3A 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#F5E6D3',
+                fontFamily: 'Georgia, serif',
+                fontWeight: 700,
+                fontSize: 16,
+                boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.06), 0 1px 2px rgba(0,0,0,0.15)',
+              }}
             >
               玄
-            </span>
-            <span className="truncate text-base font-semibold" style={{ color: '#1A1A1A' }}>
-              {share.name || '共享目录'}
+            </div>
+            <span style={{ fontFamily: 'Georgia, "Noto Serif SC", serif', fontSize: 20, fontWeight: 600, letterSpacing: '0.5px', color: '#1A1A1A', whiteSpace: 'nowrap' }}>
+              玄关知识库<span style={{ color: '#6B7280', fontWeight: 400, fontSize: 16 }}>/ Explorer</span>
             </span>
           </div>
-          <p className="mt-1 text-xs" style={{ color: '#9CA3AF' }}>只读预览</p>
+
+          <div className="flex min-w-0 items-center gap-2">
+            <span
+              className="truncate"
+              style={{ color: '#1A1A1A', fontSize: 13, fontWeight: 500, maxWidth: 220 }}
+            >
+              {project.name}
+            </span>
+            <span
+              className="flex-shrink-0 rounded-md border px-2 py-1 text-xs"
+              style={{ borderColor: '#E8E8E5', color: '#6B7280', background: '#FFFFFF' }}
+            >
+              只读预览
+            </span>
+          </div>
         </div>
-        <button
-          onClick={() => setRefreshKey((value) => value + 1)}
-          title="刷新"
-          className="rounded-lg p-2 transition-colors hover:bg-[#ECECE6]"
-          style={{ color: '#6B7280' }}
-        >
-          <RefreshCw className="h-4 w-4" />
-        </button>
       </header>
 
-      <div
-        className="flex flex-shrink-0 items-center gap-1.5 overflow-x-auto border-b bg-white px-6 py-3"
-        style={{ borderColor: '#ECECE6' }}
-      >
-        {breadcrumb.length > 1 && (
-          <button
-            onClick={() => navigateToCrumb(breadcrumb.length - 2)}
-            className="mr-2 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors hover:bg-[#F0EFEA]"
-            style={{ color: '#6B7280' }}
-          >
-            <ChevronLeft className="h-3.5 w-3.5" />
-            返回
-          </button>
-        )}
-        {breadcrumb.map((crumb, index) => (
-          <Fragment key={`${crumb.id}-${index}`}>
-            {index > 0 && <span className="text-xs" style={{ color: '#C0C0B8' }}>/</span>}
-            <button
-              onClick={() => navigateToCrumb(index)}
-              className={`whitespace-nowrap rounded px-1 py-0.5 text-xs transition-colors ${
-                index === breadcrumb.length - 1 ? 'font-medium' : 'hover:bg-[#F0EFEA]'
-              }`}
-              style={{ color: index === breadcrumb.length - 1 ? '#1A1A1A' : '#6B7280' }}
-            >
-              {crumb.name}
-            </button>
-          </Fragment>
-        ))}
-      </div>
-
-      <main className="flex-1 overflow-y-auto">
-        {isLoading ? (
-          <div className="flex h-56 items-center justify-center">
-            <div
-              className="h-7 w-7 animate-spin rounded-full"
-              style={{ borderWidth: 2, borderStyle: 'solid', borderColor: '#ECECE6', borderTopColor: '#2563EB' }}
-            />
+      <main className="flex min-h-0 flex-1 overflow-hidden">
+        {shareView === 'file' ? (
+          <div className="flex flex-1 items-center justify-center p-8">
+            <div className="w-full max-w-md text-center">
+              <div
+                className="mx-auto mb-4 flex items-center justify-center rounded-xl"
+                style={{ width: 56, height: 56, background: '#F5F3EE', color: '#6B7280' }}
+              >
+                <FileText className="h-7 w-7" />
+              </div>
+              <h1
+                className="break-words"
+                style={{ color: '#1A1A1A', fontSize: 20, fontWeight: 650, lineHeight: 1.35 }}
+              >
+                {sharedFile.name}
+              </h1>
+              <p className="mt-2 text-sm" style={{ color: '#9CA3AF' }}>只读文件预览</p>
+              <button
+                onClick={() => void openFile(sharedFile)}
+                className="mt-6 rounded-lg px-4 py-2 text-sm font-semibold transition-opacity hover:opacity-90"
+                style={{ background: '#1A1A1A', color: '#FFFFFF' }}
+              >
+                打开预览
+              </button>
+            </div>
           </div>
-        ) : error ? (
-          <div className="flex h-56 items-center justify-center px-6 text-center text-sm" style={{ color: '#DC2626' }}>
-            {error}
-          </div>
-        ) : files.length === 0 ? (
-          <div className="flex h-56 items-center justify-center text-sm" style={{ color: '#9CA3AF' }}>
-            空文件夹
-          </div>
+        ) : shareView === 'bookshelf' && !selectedProject ? (
+          <ProjectsHub
+            client={client}
+            projects={visibleProjects}
+            isLoading={bookshelfLoading}
+            error={bookshelfError}
+            title={project.name || directoryName || '共享书架'}
+            itemLabel="项目"
+            emptyText={share.itemId ? '未找到被分享的项目' : '该书架暂无项目'}
+            mode="projects"
+            readOnly
+            onSelectProject={setSelectedProject}
+            onReload={loadBookshelf}
+          />
         ) : (
-          <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7">
-            {files.map((file) => {
-              const isFolder = file.type === 1;
-              return (
-                <button
-                  key={String(file.id)}
-                  onClick={() => (isFolder ? openFolder(file) : void openFile(file))}
-                  className="flex min-h-[132px] flex-col items-center gap-2 rounded-xl border bg-white p-3 text-center transition-colors hover:bg-[#F5F3EE]"
-                  style={{ borderColor: '#ECECE6' }}
-                >
-                  <span
-                    className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl"
-                    style={{ background: isFolder ? '#FBF7EE' : '#F5F3EE' }}
-                  >
-                    {isFolder ? (
-                      <Folder className="h-7 w-7" style={{ color: '#B45309' }} />
-                    ) : (
-                      <FileText className="h-6 w-6" style={{ color: '#6B7280' }} />
-                    )}
-                  </span>
-                  <span className="line-clamp-2 w-full break-all text-xs leading-5" style={{ color: '#4B5563' }}>
-                    {file.name}
-                  </span>
-                  {!isFolder && file.size ? (
-                    <span className="mt-auto text-[10px]" style={{ color: '#C0C0B8' }}>{formatSize(file.size)}</span>
-                  ) : null}
-                </button>
-              );
-            })}
-          </div>
+          <ProjectDetail
+            client={client}
+            project={selectedProject ?? project}
+            readOnly
+            onBack={shareView === 'bookshelf' && selectedProject ? () => setSelectedProject(null) : undefined}
+            onFileOpen={openFile}
+          />
         )}
       </main>
 
@@ -309,4 +302,3 @@ export function SharePage({ share }: SharePageProps) {
     </div>
   );
 }
-

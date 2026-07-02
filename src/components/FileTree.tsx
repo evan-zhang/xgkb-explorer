@@ -18,9 +18,11 @@ interface FileTreeProps {
   rootFileId?: string;
   foldersOnly?: boolean;
   refreshKey?: number;
+  readOnly?: boolean;
+  onShareDirectory?: (directory: FileListItem) => boolean | Promise<boolean>;
 }
 
-export function FileTree({ client, projectId, onFileSelect, onFolderSelect, rootFileId, foldersOnly, refreshKey }: FileTreeProps) {
+export function FileTree({ client, projectId, onFileSelect, onFolderSelect, rootFileId, foldersOnly, refreshKey, readOnly = false, onShareDirectory }: FileTreeProps) {
   const { rootFiles, expandedFolders, isLoading, error, loadRootFiles, loadChildFiles, toggleFolder } =
     useFileTree(client);
 
@@ -143,12 +145,14 @@ export function FileTree({ client, projectId, onFileSelect, onFolderSelect, root
           <span className="truncate flex-1">{file.name}</span>
 
           {/* ⋯ 按钮 */}
-          <button
-            className="flex-shrink-0 p-1 rounded transition-opacity hover:bg-[#DDD9D0]"
-            onClick={(e) => { e.stopPropagation(); setMenu({ item: file, x: e.clientX, y: e.clientY }); }}
-          >
-            <MoreHorizontal className="w-3.5 h-3.5" style={{ color: '#9CA3AF' }} />
-          </button>
+          {!readOnly && (
+            <button
+              className="flex-shrink-0 p-1 rounded transition-opacity hover:bg-[#DDD9D0]"
+              onClick={(e) => { e.stopPropagation(); setMenu({ item: file, x: e.clientX, y: e.clientY }); }}
+            >
+              <MoreHorizontal className="w-3.5 h-3.5" style={{ color: '#9CA3AF' }} />
+            </button>
+          )}
         </div>
 
         {/* 递归渲染子节点 */}
@@ -207,7 +211,7 @@ export function FileTree({ client, projectId, onFileSelect, onFolderSelect, root
         {displayRootFiles.map((file) => renderTreeNode(file))}
       </div>
 
-      {menu && (
+      {!readOnly && menu && (
         <ContextMenu
           x={menu.x}
           y={menu.y}
@@ -216,6 +220,12 @@ export function FileTree({ client, projectId, onFileSelect, onFolderSelect, root
               label: '分享',
               icon: <Share2 className="w-4 h-4" />,
               onClick: async () => {
+                if (menu.item.type === 1 && onShareDirectory) {
+                  const copied = await onShareDirectory(menu.item);
+                  if (copied) showToast('分享链接已复制');
+                  setMenu(null);
+                  return;
+                }
                 const r = await client.getShareUrl(String(menu.item.id));
                 if (r.ok) {
                   await navigator.clipboard.writeText(r.value.shareUrl);

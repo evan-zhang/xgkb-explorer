@@ -15,15 +15,20 @@ This MVP intentionally prioritizes end-to-end usability. The share link carries 
 ## Decision
 
 - Add a share button next to the active space switcher.
+- Use the same read-only share link for project-card share actions in "My Bookshelf"; do not use the upstream raw `getShareUrl` link there.
 - Only concrete directory entries can be shared. The empty-directory "all spaces" entry is not shareable.
 - On click, show a confirmation: whether to share the named space directory for others to preview.
 - On confirmation, copy a link in the form:
 
 ```text
-{origin}{pathname}#/share?directoryId=...&name=...&token=...
+{origin}{pathname}#/share?directoryId=...&name=...&token=...&view=...
 ```
 
 - When the app starts with `#/share`, bypass the login gate and render a dedicated read-only share page.
+- Share links include a view type. `view=bookshelf` opens the read-only bookshelf card grid first. Sharing the current bookshelf shows all projects in that bookshelf; sharing a project card also uses `view=bookshelf`, but includes `itemId` so the receiver sees the bookshelf card UI with only the shared project card.
+- Directory shares from inside a project detail view use `view=project` and open the shared directory directly in the read-only project detail UI.
+- File shares from the project detail file grid use `view=file`, include the file id in `itemId`, and open a direct read-only file preview.
+- The share page should reuse the main bookshelf and project detail UI layouts where possible, so the receiver sees the same card grid, directory tree, breadcrumb, file grid, and preview surface as the sharer.
 - The share page initializes a token API client from the hash token and only exposes directory browsing and file preview.
 - The share page must not expose settings, bookshelf editing, starring, copy raw link, share again, or original new-tab file actions.
 - Shared file preview must not iframe the raw `downloadUrl`. It should fetch the file, infer a preview MIME type, and render a Blob URL, matching the main app's self-preview behavior so `Content-Disposition: attachment` does not force a browser download.

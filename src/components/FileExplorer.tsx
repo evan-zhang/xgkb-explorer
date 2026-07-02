@@ -13,6 +13,9 @@ interface FileExplorerProps {
   onFileSelect: (file: FileListItem) => void;
   onFolderNavigate: (folder: FileListItem) => void;
   refreshKey?: number;
+  readOnly?: boolean;
+  onShareDirectory?: (directory: FileListItem) => boolean | Promise<boolean>;
+  onShareFile?: (file: FileListItem, parentFolderId?: string) => boolean | Promise<boolean>;
 }
 
 function formatDate(ts: number): string {
@@ -42,9 +45,10 @@ interface ExplorerCardProps {
   item: FileListItem;
   onClick: () => void;
   onContextMenu?: (item: FileListItem, x: number, y: number) => void;
+  showActions?: boolean;
 }
 
-function ExplorerCard({ item, onClick, onContextMenu }: ExplorerCardProps) {
+function ExplorerCard({ item, onClick, onContextMenu, showActions = true }: ExplorerCardProps) {
   const isFolder = item.type === 1;
   const suffix = isFolder ? '' : (item.name.split('.').pop()?.toLowerCase() || '');
   const dateTs = item.updateTime ?? item.createTime;
@@ -58,12 +62,14 @@ function ExplorerCard({ item, onClick, onContextMenu }: ExplorerCardProps) {
         bg-white border border-[#ECECE6]
         hover:border-[#C8C8C0] hover:bg-[#F5F3EE] hover:shadow-sm"
     >
-      <button
-        className="absolute top-1.5 right-1.5 p-1 rounded-md transition-opacity hover:bg-[#E5E3DC]"
-        onClick={(e) => { e.stopPropagation(); onContextMenu?.(item, e.clientX, e.clientY); }}
-      >
-        <MoreHorizontal className="w-4 h-4" style={{ color: '#9CA3AF' }} />
-      </button>
+      {showActions && (
+        <button
+          className="absolute top-1.5 right-1.5 p-1 rounded-md transition-opacity hover:bg-[#E5E3DC]"
+          onClick={(e) => { e.stopPropagation(); onContextMenu?.(item, e.clientX, e.clientY); }}
+        >
+          <MoreHorizontal className="w-4 h-4" style={{ color: '#9CA3AF' }} />
+        </button>
+      )}
       <div
         className="w-12 h-12 flex items-center justify-center rounded-xl flex-shrink-0"
         style={{ background: isFolder ? '#FBF7EE' : '#F5F3EE' }}
@@ -105,6 +111,9 @@ export function FileExplorer({
   onFileSelect,
   onFolderNavigate,
   refreshKey,
+  readOnly = false,
+  onShareDirectory,
+  onShareFile,
 }: FileExplorerProps) {
   const [files, setFiles] = useState<FileListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -127,7 +136,7 @@ export function FileExplorer({
     await openFileInNewTab(client, item);
   }, [client]);
 
-  const menuItems = menu ? [
+  const menuItems = !readOnly && menu ? [
     ...(menu.item.type !== 1 ? [
       {
         label: '在新标签页打开',
@@ -155,6 +164,18 @@ export function FileExplorer({
       label: '分享',
       icon: <Share2 className="w-4 h-4" />,
       onClick: async () => {
+        if (menu.item.type === 1 && onShareDirectory) {
+          const copied = await onShareDirectory(menu.item);
+          if (copied) showToast('分享链接已复制');
+          setMenu(null);
+          return;
+        }
+        if (menu.item.type !== 1 && onShareFile) {
+          const copied = await onShareFile(menu.item, folderId);
+          if (copied) showToast('分享链接已复制');
+          setMenu(null);
+          return;
+        }
         const r = await client.getShareUrl(String(menu.item.id));
         if (r.ok) {
           await navigator.clipboard.writeText(r.value.shareUrl);
@@ -243,12 +264,13 @@ export function FileExplorer({
             key={String(file.id)}
             item={file}
             onClick={() => (file.type === 1 ? onFolderNavigate(file) : onFileSelect(file))}
-            onContextMenu={handleContextMenu}
+            onContextMenu={readOnly ? undefined : handleContextMenu}
+            showActions={!readOnly}
           />
         ))}
       </div>
 
-      {menu && (
+      {!readOnly && menu && (
         <ContextMenu
           x={menu.x}
           y={menu.y}

@@ -10,7 +10,11 @@ interface ProjectDetailProps {
   client: KbApiClient;
   projectId?: string;
   project: FileListItem;
-  onBack: () => void;
+  onBack?: () => void;
+  readOnly?: boolean;
+  onFileOpen?: (file: FileListItem) => void | Promise<void>;
+  onShareDirectory?: (directory: FileListItem) => boolean | Promise<boolean>;
+  onShareFile?: (file: FileListItem, parentFolderId?: string) => boolean | Promise<boolean>;
 }
 
 interface BreadcrumbItem {
@@ -18,7 +22,7 @@ interface BreadcrumbItem {
   name: string;
 }
 
-export function ProjectDetail({ client, projectId, project, onBack }: ProjectDetailProps) {
+export function ProjectDetail({ client, projectId, project, onBack, readOnly = false, onFileOpen, onShareDirectory, onShareFile }: ProjectDetailProps) {
   const rootId = String(project.id);
   const isProjectRoot = project.entryKind === 'project';
   const effectiveProjectId = isProjectRoot ? rootId : projectId;
@@ -31,8 +35,12 @@ export function ProjectDetail({ client, projectId, project, onBack }: ProjectDet
   const [explorerRefreshKey, setExplorerRefreshKey] = useState(0);
 
   const openFile = useCallback((file: FileListItem) => {
+    if (onFileOpen) {
+      void onFileOpen(file);
+      return;
+    }
     void openFileInNewTab(client, file);
-  }, [client]);
+  }, [client, onFileOpen]);
 
   const handleFolderNavigate = useCallback((folder: FileListItem) => {
     setCurrentFolderId(String(folder.id));
@@ -62,14 +70,22 @@ export function ProjectDetail({ client, projectId, project, onBack }: ProjectDet
       >
         <div style={{ padding: '20px 22px 16px', borderBottom: '1px solid #ECECE6' }}>
           <div className="flex items-center justify-between">
-            <button
-              onClick={onBack}
-              className="flex items-center gap-1.5 hover:text-[#2563EB] transition-colors"
-              style={{ fontSize: 13, color: '#6B7280', paddingBottom: 12 }}
-            >
-              <ChevronLeft className="w-3.5 h-3.5" />
-              返回列表
-            </button>
+            {onBack ? (
+              <button
+                onClick={onBack}
+                className="flex items-center gap-1.5 hover:text-[#2563EB] transition-colors"
+                style={{ fontSize: 13, color: '#6B7280', paddingBottom: 12 }}
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                返回列表
+              </button>
+            ) : (
+              <div
+                style={{ fontSize: 13, color: '#6B7280', paddingBottom: 12 }}
+              >
+                {readOnly ? '只读预览' : ''}
+              </div>
+            )}
             <button
               onClick={() => setTreeRefreshKey(k => k + 1)}
               className="p-1.5 rounded-md hover:bg-[#EDEBE4] transition-colors"
@@ -93,6 +109,8 @@ export function ProjectDetail({ client, projectId, project, onBack }: ProjectDet
             onFolderSelect={handleTreeFolderSelect}
             foldersOnly
             refreshKey={treeRefreshKey}
+            readOnly={readOnly}
+            onShareDirectory={onShareDirectory}
           />
         </div>
       </aside>
@@ -145,6 +163,9 @@ export function ProjectDetail({ client, projectId, project, onBack }: ProjectDet
             onFileSelect={openFile}
             onFolderNavigate={handleFolderNavigate}
             refreshKey={explorerRefreshKey}
+            readOnly={readOnly}
+            onShareDirectory={onShareDirectory}
+            onShareFile={onShareFile}
           />
         </div>
       </section>
