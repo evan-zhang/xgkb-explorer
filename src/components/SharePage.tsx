@@ -196,6 +196,14 @@ export function SharePage({ share }: SharePageProps) {
     if (shareView === 'file') void openFile(sharedFile);
   }, [shareView, sharedFile, openFile]);
 
+  const handleBookshelfItemSelect = useCallback((item: FileListItem) => {
+    if (item.type !== 1) {
+      void openFile(item);
+      return;
+    }
+    setSelectedProject(item);
+  }, [openFile]);
+
   return (
     <div className="flex h-screen flex-col bg-[#FAFAF7]">
       <header
@@ -278,11 +286,11 @@ export function SharePage({ share }: SharePageProps) {
             isLoading={bookshelfLoading}
             error={bookshelfError}
             title={project.name || directoryName || '共享书架'}
-            itemLabel="项目"
-            emptyText={share.itemId ? '未找到被分享的项目' : '该书架暂无项目'}
+            itemLabel="条目"
+            emptyText={share.itemId ? '未找到被分享的条目' : '该书架暂无条目'}
             mode="projects"
             readOnly
-            onSelectProject={setSelectedProject}
+            onSelectProject={handleBookshelfItemSelect}
             onReload={loadBookshelf}
           />
         ) : (

@@ -12,6 +12,7 @@ import { ProjectDetail } from './components/ProjectDetail';
 import { SharePage } from './components/SharePage';
 import { useApiClient, useProjectsHub } from './lib/hooks';
 import { saveConfig, getConfig, getStarredProjectIds, saveStarredProjectIds } from './lib/config';
+import { openFileInNewTab } from './lib/preview';
 import { buildDirectoryShareUrl, parseDirectoryShareHash } from './lib/share';
 import {
   fetchUserSettings,
@@ -372,9 +373,13 @@ function App() {
       loadSpaceProjects(String(project.id));
       return;
     }
+    if (project.type !== 1) {
+      if (client) void openFileInNewTab(client, project);
+      return;
+    }
     setSelectedProject(project);
     setView('project');
-  }, [loadSpaceProjects]);
+  }, [client, loadSpaceProjects]);
 
   const handleBack = useCallback(() => {
     setSelectedProject(null);
@@ -466,7 +471,7 @@ function App() {
     ? '暂无可见空间'
     : isDirectoryPicker
       ? '该空间下没有可加入书架的目录'
-      : '该目录下没有项目';
+      : activeSpace?.directoryId ? '该目录下没有条目' : '该目录下没有项目';
 
   const handleShareActiveSpace = async () => {
     if (!activeSpace?.directoryId || !authSession?.xgToken) return;
@@ -750,7 +755,7 @@ function App() {
             isLoading={hubLoading}
             error={hubError}
             title={hubTitle}
-            itemLabel={isSpacesHub ? '空间' : isDirectoryPicker ? '目录' : '项目'}
+            itemLabel={isSpacesHub ? '空间' : isDirectoryPicker ? '目录' : activeSpace?.directoryId ? '条目' : '项目'}
             emptyText={hubEmptyText}
             preserveOrder={isSpacesHub || isDirectoryPicker}
             mode={isSpacesHub ? 'spaces' : isDirectoryPicker ? 'directories' : 'projects'}

@@ -259,7 +259,7 @@ export function useProjectsHub(client: KbApiClient | null, directoryId: string) 
       if (!childResult.ok) { setError(childResult.error); return; }
 
       setProjectsDirFileId(directoryId);
-      setProjects(childResult.value.filter((f) => f.type === 1).map((f) => ({ ...f, entryKind: 'folder' })));
+      setProjects(childResult.value.map((f) => (f.type === 1 ? { ...f, entryKind: 'folder' } : f)));
 
       const metaResult = await client.batchGetMeta([directoryId]);
       if (metaResult.ok) {

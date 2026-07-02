@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect, useRef } from 'react';
-import { ArrowLeft, BookMarked, Boxes, FolderPlus, RefreshCw, AlertCircle, ChevronLeft, ChevronRight, Star, Share2, MoreHorizontal } from 'lucide-react';
+import { ArrowLeft, BookMarked, Boxes, FileText, FolderPlus, RefreshCw, AlertCircle, ChevronLeft, ChevronRight, Star, Share2, MoreHorizontal } from 'lucide-react';
 import type { KbApiClient } from '../lib/api';
 import type { FileListItem } from '../lib/types';
 import { useReadmePreview } from '../lib/hooks';
@@ -24,6 +24,13 @@ function nameToGradient(name: string): [string, string] {
   return COVER_GRADIENTS[Math.abs(h) % COVER_GRADIENTS.length];
 }
 
+function formatCardSize(bytes?: number): string | null {
+  if (!bytes) return null;
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 interface ProjectCardProps {
   project: FileListItem;
   client: KbApiClient;
@@ -35,9 +42,15 @@ interface ProjectCardProps {
 }
 
 function ProjectCard({ project, client, isStarred, onClick, onToggleStar, onContextMenu, readOnly = false }: ProjectCardProps) {
-  const { preview, isLoading: previewLoading } = useReadmePreview(client, String(project.id));
+  const isFolder = project.type === 1;
+  const { preview, isLoading: previewLoading } = useReadmePreview(client, isFolder ? String(project.id) : '');
   const [c1, c2] = nameToGradient(project.name);
   const initial = project.name.charAt(0);
+  const suffix = project.suffix || (!isFolder ? project.name.split('.').pop() : '') || '';
+  const fileMeta = [
+    suffix ? `${suffix.toUpperCase()} 文件` : '文件',
+    formatCardSize(project.size),
+  ].filter(Boolean).join(' · ');
 
   return (
     <div
@@ -61,7 +74,9 @@ function ProjectCard({ project, client, isStarred, onClick, onToggleStar, onCont
         alignItems: 'center', justifyContent: 'center',
         color: '#FFFFFF', padding: '0 16px', position: 'relative',
       }}>
-        <div style={{ fontSize: 30, marginBottom: 6, fontFamily: 'Georgia, serif', fontWeight: 600, opacity: 0.9 }}>{initial}</div>
+        <div style={{ fontSize: 30, marginBottom: 6, fontFamily: 'Georgia, serif', fontWeight: 600, opacity: 0.9 }}>
+          {isFolder ? initial : <FileText style={{ width: 30, height: 30 }} />}
+        </div>
         <div style={{ fontSize: 13, fontWeight: 600, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%', opacity: 0.95 }}>
           {project.name}
         </div>
@@ -109,7 +124,12 @@ function ProjectCard({ project, client, isStarred, onClick, onToggleStar, onCont
       {/* Info section */}
       <div style={{ height: 148, padding: '12px 16px 14px', display: 'flex', flexDirection: 'column' }}>
         <div style={{ flex: 1, fontSize: 13, color: '#4B5563', lineHeight: 1.55, overflow: 'hidden' }}>
-          {previewLoading ? (
+          {!isFolder ? (
+            <div style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <span style={{ color: '#6B7280' }}>{fileMeta}</span>
+              <span style={{ color: '#9CA3AF', fontSize: 12 }}>文件预览</span>
+            </div>
+          ) : previewLoading ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
               <div className="animate-pulse" style={{ height: 9, background: '#ECECE6', borderRadius: 2 }} />
               <div className="animate-pulse" style={{ height: 9, background: '#ECECE6', borderRadius: 2, width: '80%' }} />
@@ -358,8 +378,13 @@ export function ProjectsHub({
     if (!b.updateTime) return -1;
     return b.updateTime - a.updateTime;
   };
+  const byKindThenUpdateTime = (a: FileListItem, b: FileListItem) => {
+    if (a.type === 1 && b.type !== 1) return -1;
+    if (a.type !== 1 && b.type === 1) return 1;
+    return byUpdateTime(a, b);
+  };
 
-  const sortedAll = preserveOrder ? projects : [...projects].sort(byUpdateTime);
+  const sortedAll = preserveOrder ? projects : [...projects].sort(byKindThenUpdateTime);
   const starredProjects = preserveOrder || readOnly ? [] : sortedAll.filter(p => starred.has(String(p.id)));
   const unstarredProjects = preserveOrder ? sortedAll : sortedAll.filter(p => !starred.has(String(p.id)));
 
