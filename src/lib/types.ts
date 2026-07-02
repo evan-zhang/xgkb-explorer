@@ -34,7 +34,6 @@ export interface ProjectInfo {
   name?: string;
   projectName?: string;
   title?: string;
-  fileType?: number | string;
   type?: number;
   createTime?: number;
   updateTime?: number;
@@ -92,6 +91,19 @@ export interface ShareToMeItem {
   title?: string;
   fileType?: number | string;
   type?: number;
+  creator?: string;
+  shareSource?: string;
+  shareUserName?: string;
+  shareEmployeeName?: string;
+  sharerName?: string;
+  creatorName?: string;
+  createUserName?: string;
+  ownerName?: string;
+  userName?: string;
+  createBy?: string | number;
+  shareTime?: string | number;
+  shareAt?: string | number;
+  gmtCreate?: string | number;
   hasChild?: boolean;
   suffix?: string;
   size?: number;

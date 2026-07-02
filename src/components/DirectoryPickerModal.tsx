@@ -46,6 +46,8 @@ interface PickerNode {
   suffix?: string;
   size?: number;
   updateTime?: number;
+  shareSource?: string;
+  shareTime?: string | number;
 }
 
 function getProjectId(project: ProjectInfo): string | null {
@@ -80,6 +82,38 @@ function getSharedDirectoryName(item: ShareToMeItem, id: string): string {
   return (item.directoryName ?? item.fileName ?? item.name ?? item.title ?? String(id)).trim() || String(id);
 }
 
+function getSharedSource(item: ShareToMeItem): string | undefined {
+  return item.creator
+    ?? item.shareSource
+    ?? item.shareUserName
+    ?? item.shareEmployeeName
+    ?? item.sharerName
+    ?? item.creatorName
+    ?? item.createUserName
+    ?? item.ownerName
+    ?? item.userName;
+}
+
+function getSharedTime(item: ShareToMeItem): string | number | undefined {
+  return item.createBy ?? item.shareTime ?? item.shareAt ?? item.gmtCreate ?? item.createTime ?? item.updateTime;
+}
+
+function formatSharedTime(value?: string | number): string | null {
+  if (value === undefined || value === null || value === '') return null;
+  const numeric = typeof value === 'number' ? value : Number(value);
+  const date = Number.isFinite(numeric)
+    ? new Date(numeric < 1_000_000_000_000 ? numeric * 1000 : numeric)
+    : new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 function toSharedDirectoryNode(item: ShareToMeItem): PickerNode | null {
   const fileType = item.fileType ?? item.type;
   if (fileType !== undefined && Number(fileType) !== 1) return null;
@@ -96,6 +130,8 @@ function toSharedDirectoryNode(item: ShareToMeItem): PickerNode | null {
     suffix: item.suffix,
     size: item.size,
     updateTime: item.updateTime,
+    shareSource: getSharedSource(item),
+    shareTime: getSharedTime(item),
   };
 }
 
@@ -141,6 +177,10 @@ function nodeKey(node: PickerNode): string {
   if (node.directoryId) return `folder-${node.directoryId}`;
   if (node.fileId) return `file-${node.fileId}`;
   return node.id;
+}
+
+function isSamePath(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((part, index) => part === b[index]);
 }
 
 export function DirectoryPickerModal({
@@ -328,6 +368,17 @@ export function DirectoryPickerModal({
     setView('folders');
     setExpandedNodeIds((prev) => new Set(prev).add(directory.id));
     void loadChildren(directory);
+  };
+
+  const navigateToBreadcrumb = (index: number) => {
+    if (!selectedSpace) return;
+    const currentPath = currentFolder?.path ?? selectedSpace.path;
+    const targetPath = currentPath.slice(0, index + 1);
+    const loadedFolders = Object.values(childrenByNodeId).flat().filter(isFolderNode);
+    const target = isSamePath(selectedSpace.path, targetPath)
+      ? selectedSpace
+      : loadedFolders.find((node) => isSamePath(node.path, targetPath));
+    if (target) selectFolder(target);
   };
 
   const toggleFolder = (node: PickerNode, event?: React.MouseEvent) => {
@@ -545,9 +596,19 @@ export function DirectoryPickerModal({
                         </span>
                         <span className="min-w-0">
                           <span className="block truncate" style={{ color: '#1F2937', fontSize: 14, fontWeight: 700 }}>{space.name}</span>
-                          <span className="block mt-1" style={{ color: '#9CA3AF', fontSize: 11 }}>
-                            {activeTab === 'mine' ? `空间 ID: ${space.projectId}` : `目录 ID: ${space.directoryId}`}
-                          </span>
+                          {activeTab === 'mine' ? (
+                            <span className="block mt-1" style={{ color: '#9CA3AF', fontSize: 11 }}>
+                              {`空间 ID: ${space.projectId}`}
+                            </span>
+                          ) : (
+                            <span className="block mt-1 space-y-0.5" style={{ color: '#9CA3AF', fontSize: 11 }}>
+                              <span className="block">{`目录 ID: ${space.directoryId}`}</span>
+                              <span className="block">
+                                {`分享来源: ${space.shareSource || '-'}`}
+                                {formatSharedTime(space.shareTime) ? ` · 分享时间: ${formatSharedTime(space.shareTime)}` : ''}
+                              </span>
+                            </span>
+                          )}
                         </span>
                       </span>
                       <span className="flex items-center gap-1 flex-shrink-0" style={{ color: '#2563EB', fontSize: 12, fontWeight: 650 }}>
@@ -579,7 +640,14 @@ export function DirectoryPickerModal({
                       return (
                         <span key={`${part}-${index}`} className="inline-flex items-center gap-1.5">
                           {index > 0 && <span style={{ color: '#D1D5DB' }}>/</span>}
-                          <span style={{ color: isLast ? '#111827' : '#6B7280', fontWeight: isLast ? 700 : 500 }}>{part}</span>
+                          <button
+                            type="button"
+                            onClick={() => navigateToBreadcrumb(index)}
+                            className="rounded px-1 py-0.5 transition-colors hover:bg-[#F0EFEA]"
+                            style={{ color: isLast ? '#111827' : '#6B7280', fontWeight: isLast ? 700 : 500 }}
+                          >
+                            {part}
+                          </button>
                         </span>
                       );
                     })}
